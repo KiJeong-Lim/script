@@ -1,0 +1,2 @@
+# script
+My script
