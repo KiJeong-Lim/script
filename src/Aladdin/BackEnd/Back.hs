@@ -22,8 +22,6 @@ type SuspEnv = [SuspItem]
 
 type ScopeLevel = Int
 
-type Facts = [TermNode]
-
 data Atom id
     = Atom
         { isType :: Bool

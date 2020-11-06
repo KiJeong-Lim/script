@@ -14,11 +14,15 @@ import qualified Data.Set as Set
 import Data.Unique
 import Lib.Base
 
+type Fact = TermNode
+
+type Facts = [Fact]
+
 type Goal = TermNode
 
-type StackItem = [(Context, Goal)]
+type Dummy = [DummyItem]
 
-type Stack = [StackItem]
+type Stack = [Dummy]
 
 type Satisfied = String
 
@@ -33,10 +37,15 @@ data Context
         }
     deriving ()
 
+data DummyItem
+    = Proves Context Goal
+    | Discharge Unique
+    deriving ()
+
 data RTErr
     = RTErr
         { _ErrorCause :: String
-        , _CurrentEnv :: (StackItem, Stack)
+        , _CurrentEnv :: (Dummy, Stack)
         }
     deriving ()
 
@@ -56,10 +65,10 @@ instance Show RTErr where
         , showsCurrentState item stack . nl
         ]
 
-showStackItem :: Indentation -> StackItem -> String -> String
-showStackItem space = strcat . map go where
-    go :: (Context, Goal) -> String -> String
-    go (ctx, goal) = strcat
+showDummy :: Indentation -> Dummy -> String -> String
+showDummy space = strcat . map go where
+    go :: DummyItem -> String -> String
+    go (Proves ctx goal) = strcat
         [ pindent space . strstr "- goal = " . showsPrec 0 goal . nl
         , pindent space . strstr "- context = Context" . nl
         , pindent (space + 4) . strstr "{ " . strstr "_Scope = " . showsPrec 0 (_Scope ctx) . nl
@@ -67,86 +76,93 @@ showStackItem space = strcat . map go where
         , pindent (space + 4) . strstr ", " . strstr "_Lefts = " . plist (space + 8) [ showsPrec 0 lhs . strstr " =?= " . showsPrec 0 rhs | Disagreement lhs rhs <- _Lefts ctx ] . nl
         , pindent (space + 4) . strstr "} " . nl
         ]
+    go (Discharge uni) = pindent space . strstr "- discharge " . showsPrec 0 (hashUnique uni) . nl
 
-showsCurrentState :: StackItem -> Stack -> String -> String
-showsCurrentState item1 stack2 = strcat
+showsCurrentState :: Dummy -> Stack -> String -> String
+showsCurrentState dummy1 stack2 = strcat
     [ strstr "* The top of the stack is:" . nl
-    , showStackItem 4 item1 . nl
+    , showDummy 4 dummy1 . nl
     , strstr "* The rest of the stack is:" . nl
     , strcat
         [ strcat 
             [ pindent 2 . strstr "- [# " . showsPrec 0 i . strstr "]:" . nl
-            , showStackItem 4 item2 . nl
+            , showDummy 4 dummy2 . nl
             ]
-        | (i, item2) <- zip [1, 2 .. length stack2] stack2
+        | (i, dummy2) <- zip [1, 2 .. length stack2] stack2
         ]
     , strstr "--------------------------------" . nl
     ]
 
 runtime :: Controller -> Facts -> Goal -> IO Satisfied
-runtime (Controller get_str put_str answer) = go where
+runtime (Controller get_str put_str answer) program = go where
     raise :: (MonadTrans t, Monad m) => e -> t (ExceptT e m) a
     raise = lift . throwE
-    transit :: StackItem -> StateT (Facts, Stack) (ExceptT RTErr IO) (Maybe Context, StackItem)
+    transit :: Dummy -> StateT (Map.Map Unique Fact, Stack) (ExceptT RTErr IO) (Maybe Context, Dummy)
     transit [] = do
-        (facts, stack) <- get
+        (hypotheses, stack) <- get
         case stack of
             [] -> return (Nothing, [])
-            item : stack' -> do
-                put (facts, stack')
-                transit item
-    transit ((ctx, goal) : item) = do
-        (facts, stack) <- get
+            dummy : stack' -> do
+                put (hypotheses, stack')
+                transit dummy
+    transit (Proves ctx goal : dummy) = do
+        (hypotheses, stack) <- get
         let zonk = rewrite HNF . flatten (_Subst ctx)
+            facts = program ++ Map.elems hypotheses
             defaultRTErr = RTErr
                 { _ErrorCause = "An unknown error occured."
-                , _CurrentEnv = (((ctx, goal) : item), stack)
+                , _CurrentEnv = ((Proves ctx goal : dummy), stack)
                 }
-        liftIO (put_str (showsCurrentState ((ctx, goal) : item) stack ""))
+        liftIO (put_str (showsCurrentState (Proves ctx goal : dummy) stack ""))
         liftIO get_str
         case unfoldlNApp (zonk goal) of
             (NCon (Atom { _ID = CI_Lambda }), args) -> raise (defaultRTErr { _ErrorCause = "`CI_Lambda\' cannot be head of goal." })
             (NCon (Atom { _ID = CI_If }), args) -> raise (defaultRTErr { _ErrorCause = "`CI_If\' cannot be head of goal." })
             (NCon (Atom { _ID = CI_True }), args)
-                | [] <- args -> return (Just ctx, item)
+                | [] <- args -> return (Just ctx, dummy)
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_True\' must be 0." })
             (NCon (Atom { _ID = CI_Cut }), args)
-                | [] <- args -> return (Just ctx, [])
+                | [] <- args -> do
+                    sequence
+                        [ do
+                            (hypotheses, stack) <- get
+                            put (Map.delete uni hypotheses, stack)
+                        | Discharge uni <- dummy
+                        ]
+                    return (Just ctx, [])
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Cut\' must be 0." })
             (NCon (Atom { _ID = CI_Fail }), args)
-                | [] <- args -> transit item
+                | [] <- args -> transit dummy
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Fail\' must be 0." })
             (NCon (Atom { _ID = CI_And }), args)
                 | [goal1, goal2] <- args -> do
-                    output <- transit ((ctx, goal1) : item)
+                    output <- transit (Proves ctx goal1 : dummy)
                     case output of
-                        (Nothing, item') -> transit item'
-                        (Just ctx', item') -> transit ((ctx', goal2) : item')
+                        (Nothing, dummy') -> transit dummy'
+                        (Just ctx', dummy') -> transit (Proves ctx' goal2 : dummy')
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_And\' must be 2." })
             (NCon (Atom { _ID = CI_Or }), args)
-                | [goal1, goal2] <- args -> transit ((ctx, goal1) : (ctx, goal2) : item)
+                | [goal1, goal2] <- args -> transit (Proves ctx goal1 : Proves ctx goal2 : dummy)
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Or\' must be 2." })
             (NCon (Atom { _ID = CI_Imply }), args)
                 | [fact1, goal2] <- args -> do
-                    put (fact1 : facts, stack)
-                    output <- transit ((ctx, goal2) : item)
-                    (facts', stack') <- get
-                    put (drop 1 facts', stack')
-                    return output
+                    uni <- liftIO newUnique
+                    put (Map.insert uni fact1 hypotheses, stack)
+                    transit (Proves ctx goal2 : Discharge uni : dummy)
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Imply\' must be 2." })
             (NCon (Atom { _ID = CI_Sigma }), args)
                 | [goal1] <- args -> do
                     uni <- liftIO newUnique
                     let v = mkTermAtom (VI_Unique uni)
                         ctx' = ctx { _Label = enterID v (_Scope ctx) (_Label ctx) }
-                    transit ((ctx', mkNApp goal1 (mkLVar v)) : item)
+                    transit (Proves ctx' (mkNApp goal1 (mkLVar v)) : dummy)
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Sigma\' must be 1." })
             (NCon (Atom { _ID = CI_Pi }), args)
                 | [goal1] <- args -> do
                     uni <- liftIO newUnique
                     let c = mkTermAtom (CI_Unique uni)
                         ctx' = ctx { _Label = enterID c (_Scope ctx + 1) (_Label ctx), _Scope = _Scope ctx + 1 }
-                    transit ((ctx', mkNApp goal1 (mkNCon c)) : item)
+                    transit (Proves ctx' (mkNApp goal1 (mkNCon c)) : dummy)
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Pi\' must be 1." })
             (NCon pred, args) -> do
                 let instantiate = instantiate_aux . unfoldlNApp . rewrite HNF
@@ -175,9 +191,9 @@ runtime (Controller get_str put_str answer) = go where
                     instantiate_aux (NCon (Atom { _ID = CI_Imply }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Imply\' cannot be head of fact." })
                     instantiate_aux (NCon (Atom { _ID = CI_Sigma }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Sigma\' cannot be head of fact." })
                     instantiate_aux (NCon c, args) = return (List.foldl' mkNApp (mkNCon c) args, mkNCon (mkTermAtom CI_True))
-                item' <- fmap concat $ forM facts $ \fact -> do
+                dummy' <- fmap concat $ forM facts $ \fact -> do
                     let failure = return []
-                        success with = return [with]
+                        success (ctx, goal) = return [Proves ctx goal]
                     ((conclusion, premise), labeling) <- lift (runStateT (instantiate (zonk fact)) (_Label ctx))
                     case unfoldlNApp (rewrite HNF conclusion) of
                         (NCon pred', args')
@@ -196,11 +212,15 @@ runtime (Controller get_str put_str answer) = go where
                                         , premise
                                         )
                         _ -> failure
-                put (facts, item : stack)
-                transit item'
+                put (hypotheses, dummy : stack)
+                transit dummy'
             _ -> raise (defaultRTErr { _ErrorCause = "Every head of any goal must be a constant." })
-    go :: Facts -> Goal -> IO Satisfied
-    go facts goal = loop [(initCtx, goal)] [] where
+    transit (Discharge uni : dummy) = do
+        (hypotheses, stack) <- get
+        put (Map.delete uni hypotheses, stack)
+        transit dummy
+    go :: Goal -> IO Satisfied
+    go goal = loop Map.empty [Proves initCtx goal] [] where
         initCtx :: Context
         initCtx = Context
             { _Scope = 0
@@ -211,18 +231,18 @@ runtime (Controller get_str put_str answer) = go where
                 }
             , _Lefts = []
             }
-        loop :: StackItem -> Stack -> IO Satisfied
-        loop [] [] = return "-no"
-        loop [] (item : stack) = loop item stack
-        loop item stack = do
-            output <- runExceptT (runStateT (transit item) (facts, []))
-            case output of
-                Left err -> do
-                    print err
-                    return "-err"
-                Right ((Nothing, item'), (facts', stack')) -> loop item' stack'
-                Right ((Just ctx, item'), (facts', stack')) -> do
-                    more <- answer ctx
-                    if more
-                        then loop item' stack'
-                        else return "-yes"
+        loop :: Map.Map Unique Fact -> Dummy -> Stack -> IO Satisfied
+        loop hypotheses dummy stack
+            | null dummy && null stack = return "-no"
+            | otherwise = do
+                output <- runExceptT (runStateT (transit dummy) (hypotheses, []))
+                case output of
+                    Left err -> do
+                        print err
+                        return "-err"
+                    Right ((Nothing, dummy'), (hypotheses', stack')) -> loop hypotheses' dummy' stack'
+                    Right ((Just ctx, dummy'), (hypotheses', stack')) -> do
+                        more <- answer ctx
+                        if more
+                            then loop hypotheses' dummy' stack'
+                            else return "-yes"
