@@ -2,6 +2,8 @@ module Aladdin.BackEnd.Kernel.KernelTest where
 
 import Aladdin.BackEnd.Back
 import Aladdin.BackEnd.Kernel.HOPU
+import Aladdin.BackEnd.Kernel.Runtime
+import Control.Monad
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -89,3 +91,57 @@ genLVar :: Gen TermNode
 genLVar = do
     var <- arbitrary
     return (mkLVar var)
+
+hoputest :: [Disagreement] -> Labeling -> IO ()
+hoputest disagreements labeling = do
+    output <- runHOPU disagreements labeling
+    case output of
+        Nothing -> putStrLn ">>> failure!"
+        Just (HopuEnv labeling' binding', disagreements') -> do
+            putStrLn ">>> success!"
+            putStrLn "* var-labeling:"
+            forM (Map.toList (_VarLabel labeling')) $ uncurry $ \var -> \label -> putStrLn ("    " ++ show var ++ " +-> " ++ show label)
+            putStrLn "* con-labeling:"
+            forM (Map.toList (_ConLabel labeling')) $ uncurry $ \con -> \label -> putStrLn ("    " ++ show con ++ " +-> " ++ show label)
+            putStrLn "* binding:"
+            forM (Map.toList (getVarBinding binding')) $ uncurry $ \v -> \t -> putStrLn ("    " ++ show v ++ " +-> " ++ show t)
+            putStrLn "* disagreements:"
+            forM disagreements' $ \eqn -> putStrLn ("    " ++ show eqn)
+            return ()
+
+test :: Int -> IO ()
+test 1 = hoputest disagreements labeling where
+    disagreements :: [Disagreement]
+    disagreements = [Disagreement (read "X c4 c1 c2 c3") (read "Y c5 c2 c1 c3")]
+    labeling :: Labeling
+    labeling = Labeling
+        { _ConLabel = Map.fromList
+            [ (mkTermAtom (CI_Named "c1"), 1)
+            , (mkTermAtom (CI_Named "c2"), 2)
+            , (mkTermAtom (CI_Named "c3"), 3)
+            , (mkTermAtom (CI_Named "c4"), 4)
+            , (mkTermAtom (CI_Named "c5"), 5)
+            ]
+        , _VarLabel = Map.fromList
+            [ (mkTermAtom (VI_Named "X"), 0)
+            , (mkTermAtom (VI_Named "Y"), 0)
+            ]
+        }
+test 2 = hoputest disagreements labeling where
+    disagreements :: [Disagreement]
+    disagreements = [Disagreement (read "X c4 c1 c2 c3") (read "X c5 c2 c1 c3")]
+    labeling :: Labeling
+    labeling = Labeling
+        { _ConLabel = Map.fromList
+            [ (mkTermAtom (CI_Named "c1"), 1)
+            , (mkTermAtom (CI_Named "c2"), 2)
+            , (mkTermAtom (CI_Named "c3"), 3)
+            , (mkTermAtom (CI_Named "c4"), 4)
+            , (mkTermAtom (CI_Named "c5"), 5)
+            ]
+        , _VarLabel = Map.fromList
+            [ (mkTermAtom (VI_Named "X"), 0)
+            , (mkTermAtom (VI_Named "Y"), 0)
+            ]
+        }
+test _ = return ()

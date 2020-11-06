@@ -140,16 +140,101 @@ instance IsID VI where
     renewID atom level labeling = labeling { _VarLabel = Map.update (\_ -> Just level) atom (_VarLabel labeling) }
     labelID labeling atom = maybe 0 id (Map.lookup atom (_VarLabel labeling))
 
+instance Show VI where
+    show = flip (showsPrec 0) ""
+    showList = undefined
+    showsPrec _ = go where
+        go :: VI -> String -> String
+        go (VI_Named str) = strstr str
+        go (VI_Unique uni) = strstr "V_" . showsPrec 0 (hashUnique uni)
+
 instance IsID CI where
     funique atom = CI_Unique atom
     enterID atom level labeling = labeling { _ConLabel = Map.insert atom level (_ConLabel labeling) }
     renewID atom level labeling = labeling { _ConLabel = Map.update (\_-> Just level) atom (_ConLabel labeling) }
     labelID labeling atom = maybe 0 id (Map.lookup atom (_ConLabel labeling))
 
+instance Show CI where
+    show = flip (showsPrec 0) ""
+    showList = undefined
+    showsPrec _ = go where
+        go :: CI -> String -> String
+        go (CI_Unique uni) = strstr "c_" . showsPrec 0 (hashUnique uni)
+        go (CI_Named str) = strstr str
+        go CI_Lambda = strstr "__lambda"
+        go CI_If = strstr "__if"
+        go CI_True = strstr "__true"
+        go CI_Fail = strstr "__fail"
+        go CI_Cut = strstr "__cut"
+        go CI_And = strstr "__and"
+        go CI_Or = strstr "__or"
+        go CI_Imply = strstr "__imply"
+        go CI_Sigma = strstr "__sigma"
+        go CI_Pi = strstr "__pi"
+        go CI_Arrow = strstr "__arrow"
+        go (CI_ChrL chr) = showsPrec 0 chr 
+        go CI_Cons = strstr "__cons"
+        go CI_Nil = strstr "__nil"
+
+instance Read TermNode where
+    readsPrec = flip go [] where
+        cond1 :: Char -> Bool
+        cond1 ch = ch `elem` ['a' .. 'z'] || ch `elem` ['0' .. '9'] || ch == '_'
+        cond2 :: Char -> Bool
+        cond2 ch = ch `elem` ['A' .. 'Z'] || ch `elem` ['a' .. 'z'] || ch `elem` ['0' .. '9']
+        readCon :: String -> [(String, String)]
+        readCon (ch : str)
+            | ch `elem` ['a' .. 'z'] = return (ch : takeWhile cond1 str, dropWhile cond1 str)
+        readCon _ = []
+        readVar :: String -> [(String, String)]
+        readVar (ch : str)
+            | ch `elem` ['A' .. 'Z'] = return (ch : takeWhile cond2 str, dropWhile cond2 str)
+        readVar _ = []
+        installVar :: [String] -> String -> TermNode
+        installVar env str = case str `List.elemIndex` env of
+            Nothing -> mkLVar (mkTermAtom (VI_Named str))
+            Just i -> mkNIdx (i + 1)
+        many :: (String -> [(a, String)]) -> (String -> [([a], String)])
+        many p str0 = concat
+            [ do
+                (x, str1) <- p str0
+                (xs, str2) <- many p str1
+                return (x : xs, str2)
+            , return ([], str0)
+            ]
+        go :: Int -> [String] -> String -> [(TermNode, String)]
+        go 0 env str0 = concat
+            [ do
+                (str, '\\' : ' ' : str1) <- readVar str0
+                (t, str2) <- go 0 (str : env) str1
+                return (mkNAbs t, str2)
+            , go 1 env str0
+            ]
+        go 1 env str0 = do
+            (t, str1) <- go 2 env str0
+            (ts, str2) <- many (getArgs env) str1
+            return (List.foldl' mkNApp t ts, str2)
+        go 2 env str0 = concat
+            [ do
+                (str, str1) <- readCon str0
+                return (mkNCon (mkTermAtom (CI_Named str)), str1)
+            , do
+                (str, str1) <- readVar str0
+                return (installVar env str, str1)
+            ]
+        go _ env ('(' : str0) = do
+            (t, ')' : str1) <- go 0 env str0
+            return (t, str1)
+        go _ _ _ = []
+        getArgs :: [String] -> String -> [(TermNode, String)]
+        getArgs env (' ' : str0) = go 2 env str0
+        getArgs _ _ = []
+    readList = undefined
+
 instance Show TermNode where
     show = flip (showsPrec 0) ""
-    showList [] rest = rest
-    showList (t : ts) rest = showsPrec 0 t (";\n" ++ showList ts rest)
+    showList [] = id
+    showList (t : ts) = showsPrec 0 t . strstr ";" . nl . showList ts
     showsPrec prec = showsPrec prec . showTerm
 
 instance HasLVar TermNode where
