@@ -14,6 +14,8 @@ import Data.Unique
 import Data.IORef
 import Lib.Base
 
+infix 3 +->
+
 data Disagreement
     = Disagreement
         { getLHS :: TermNode
@@ -39,6 +41,28 @@ instance Show Disagreement where
 instance HasLVar Disagreement where
     getFreeLVars (Disagreement lhs rhs) = getFreeLVars lhs . getFreeLVars rhs
     applyBinding theta (Disagreement lhs rhs) = Disagreement (applyBinding theta lhs) (applyBinding theta rhs)
+
+(+->) :: LogicVar -> TermNode -> VarBinding
+v +-> t
+    | t == LVar v = mempty
+    | otherwise = VarBinding { getVarBinding = Map.singleton v t }
+
+viewNestedNAbs :: TermNode -> (Int, TermNode)
+viewNestedNAbs = go 0 where
+    go :: Int -> TermNode -> (Int, TermNode)
+    go n (NAbs t) = go (n + 1) t
+    go n t = (n, t)
+
+makeNestedNAbs :: Int -> TermNode -> TermNode
+makeNestedNAbs n
+    | n == 0 = id
+    | n > 0 = makeNestedNAbs (n - 1) . NAbs
+    | otherwise = undefined
+
+isRigid :: TermNode -> Bool
+isRigid (NCon c) = True
+isRigid (NIdx i) = True
+isRigid _ = False
 
 insert' :: Eq a => a -> [a] -> [a]
 insert' x xs
@@ -103,7 +127,7 @@ zs `down` ts = if downable then return indices else lift (throwE DownFail) where
         ]
 
 up :: [TermNode] -> LogicVar -> StateT HopuEnv (ExceptT HopuFail IO) [TermNode]
-ts `up` y = if upable then result else lift (throwE UpFail) where
+ts `up` y = if upable then findVisibles . getLabeling <$> get else lift (throwE UpFail) where
     upable :: Bool
     upable = and
         [ areAllDistinct ts
@@ -115,10 +139,6 @@ ts `up` y = if upable then result else lift (throwE UpFail) where
         | NCon c <- ts
         , labelID labeling c <= labelID labeling y
         ]
-    result :: StateT HopuEnv (ExceptT HopuFail IO) [TermNode]
-    result = do
-        env <- get
-        return (findVisibles (getLabeling env))
 
 bind :: LogicVar -> TermNode -> [TermNode] -> Int -> StateT HopuEnv (ExceptT HopuFail IO) TermNode
 bind var = go . rewrite HNF where
@@ -162,25 +182,26 @@ bind var = go . rewrite HNF where
                     rhs_arguments = map (rewrite NF) rhs_tail
                     common_arguments = Set.toList (Set.fromList lhs_arguments `Set.intersection` Set.fromList rhs_arguments)
                 if isPatternRespectTo var' rhs_arguments labeling
-                    then if labelID labeling var < labelID labeling var'
-                        then do
-                            rhs_inner <- lhs_arguments `up` var'
-                            lhs_inner <- rhs_inner `down` lhs_arguments
-                            rhs_outer <- common_arguments `down` rhs_arguments
-                            lhs_outer <- common_arguments `down` lhs_arguments
-                            common_head <- getNewLVar isty (labelID labeling var)
-                            modify (substEnv (var' +-> makeNestedNAbs (length rhs_tail) (List.foldl' mkNApp common_head (rhs_inner ++ rhs_outer))))
-                            return (List.foldl' mkNApp common_head (lhs_inner ++ lhs_outer))
-                        else do
-                            lhs_inner <- rhs_arguments `up` var
-                            rhs_inner <- lhs_inner `down` rhs_arguments
-                            lhs_outer <- common_arguments `down` lhs_arguments
-                            rhs_outer <- common_arguments `down` rhs_arguments
-                            common_head <- getNewLVar isty (labelID labeling var)
-                            modify (substEnv (var' +-> makeNestedNAbs (length rhs_tail) (List.foldl' mkNApp common_head (rhs_inner ++ rhs_outer))))
-                            return (List.foldl' mkNApp common_head (lhs_inner ++ lhs_outer))
+                    then do
+                        (selected_lhs_arguments, selected_rhs_arguments) <- case labelID labeling var `compare` labelID labeling var' of
+                            LT -> do
+                                rhs_inner <- lhs_arguments `up` var'
+                                lhs_inner <- rhs_inner `down` lhs_arguments
+                                rhs_outer <- common_arguments `down` rhs_arguments
+                                lhs_outer <- common_arguments `down` lhs_arguments
+                                return (lhs_inner ++ lhs_outer, rhs_inner ++ rhs_outer)
+                            geq -> do
+                                lhs_inner <- rhs_arguments `up` var
+                                rhs_inner <- lhs_inner `down` rhs_arguments
+                                lhs_outer <- common_arguments `down` lhs_arguments
+                                rhs_outer <- common_arguments `down` rhs_arguments
+                                return (lhs_inner ++ lhs_outer, rhs_inner ++ rhs_outer)
+                        common_head <- getNewLVar isty (labelID labeling var)
+                        modify (substEnv (var' +-> makeNestedNAbs (length rhs_tail) (List.foldl' mkNApp common_head selected_rhs_arguments)))
+                        return (List.foldl' mkNApp common_head selected_lhs_arguments)
                     else lift (throwE NotAPattern)
-        | otherwise = lift (throwE BindFail)
+        | otherwise
+        = lift (throwE BindFail)
 
 mksubst :: LogicVar -> TermNode -> [TermNode] -> HopuEnv -> ExceptT HopuFail IO (Maybe HopuEnv)
 mksubst var rhs parameters env = catchE (Just . snd <$> runStateT (go var (rewrite HNF rhs) parameters) env) handleErr where
@@ -265,7 +286,8 @@ simplify changed = go where
                         put env
                         liftIO (writeIORef changed True)
                         go (applyBinding (getVBinding env) disagreements)
-            | otherwise = solveNext
+            | otherwise
+            = solveNext
             where
                 solveNext :: StateT HopuEnv (ExceptT HopuFail IO) [Disagreement]
                 solveNext = do

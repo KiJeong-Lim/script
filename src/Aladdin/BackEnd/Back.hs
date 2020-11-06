@@ -12,8 +12,6 @@ import qualified Data.Set as Set
 import Data.Unique
 import Lib.Base
 
-infix 3 +->
-
 type DeBruijn = Int
 
 type LogicVar = Atom VI
@@ -272,33 +270,11 @@ flatten (VarBinding { getVarBinding = mapsto }) = go where
     go (NAbs t) = mkNAbs (go t)
     go (Susp t ol nl env) = mkSusp (go t) ol nl (lensForSusp go env)
 
-viewNestedNAbs :: TermNode -> (Int, TermNode)
-viewNestedNAbs = go 0 where
-    go :: Int -> TermNode -> (Int, TermNode)
-    go n (NAbs t) = go (n + 1) t
-    go n t = (n, t)
-
-makeNestedNAbs :: Int -> TermNode -> TermNode
-makeNestedNAbs n
-    | n == 0 = id
-    | n > 0 = makeNestedNAbs (n - 1) . NAbs
-    | otherwise = undefined
-
-isRigid :: TermNode -> Bool
-isRigid (NCon c) = True
-isRigid (NIdx i) = True
-isRigid _ = False
-
 unfoldlNApp :: TermNode -> (TermNode, [TermNode])
 unfoldlNApp = flip go [] where
     go :: TermNode -> [TermNode] -> (TermNode, [TermNode])
     go (NApp t1 t2) ts = go t1 (t2 : ts)
     go t ts = (t, ts)
-
-(+->) :: LogicVar -> TermNode -> VarBinding
-v +-> t
-    | t == LVar v = mempty
-    | otherwise = VarBinding { getVarBinding = Map.singleton v t }
 
 rewriteWithSusp :: TermNode -> Int -> Int -> SuspEnv -> ReductionOption -> TermNode
 rewriteWithSusp (LVar v) ol nl env option
