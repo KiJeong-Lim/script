@@ -27,7 +27,6 @@ type MoreAnswer = Bool
 data Context
     = Context
         { _Scope :: ScopeLevel
-        , _Facts :: Facts
         , _Subst :: VarBinding
         , _Label :: Labeling
         , _Lefts :: [Disagreement]
@@ -64,7 +63,6 @@ showStackItem space = strcat . map go where
         [ pindent space . strstr "- goal = " . showsPrec 0 goal . nl
         , pindent space . strstr "- context = Context" . nl
         , pindent (space + 4) . strstr "{ " . strstr "_Scope = " . showsPrec 0 (_Scope ctx) . nl
-        , pindent (space + 4) . strstr ", " . strstr "_Facts = " . plist (space + 8) (map (showsPrec 0) (_Facts ctx)) . nl
         , pindent (space + 4) . strstr ", " . strstr "_Subst = " . plist (space + 8) [ showsPrec 0 (LVar v) . strstr " +-> " . showsPrec 0 t | (v, t) <- Map.toList (getVarBinding (_Subst ctx)) ] . nl
         , pindent (space + 4) . strstr ", " . strstr "_Lefts = " . plist (space + 8) [ showsPrec 0 lhs . strstr " =?= " . showsPrec 0 rhs | Disagreement lhs rhs <- _Lefts ctx ] . nl
         , pindent (space + 4) . strstr "} " . nl
@@ -89,16 +87,16 @@ runtime :: Controller -> Facts -> Goal -> IO Satisfied
 runtime (Controller get_str put_str answer) = go where
     raise :: (MonadTrans t, Monad m) => e -> t (ExceptT e m) a
     raise = lift . throwE
-    transit :: StackItem -> StateT Stack (ExceptT RTErr IO) (Maybe Context, StackItem)
+    transit :: StackItem -> StateT (Facts, Stack) (ExceptT RTErr IO) (Maybe Context, StackItem)
     transit [] = do
-        stack <- get
+        (facts, stack) <- get
         case stack of
             [] -> return (Nothing, [])
             item : stack' -> do
-                put stack'
+                put (facts, stack')
                 transit item
     transit ((ctx, goal) : item) = do
-        stack <- get
+        (facts, stack) <- get
         let zonk = rewrite HNF . flatten (_Subst ctx)
             defaultRTErr = RTErr
                 { _ErrorCause = "An unknown error occured."
@@ -107,8 +105,8 @@ runtime (Controller get_str put_str answer) = go where
         liftIO (put_str (showsCurrentState ((ctx, goal) : item) stack ""))
         liftIO get_str
         case unfoldlNApp (zonk goal) of
-            (NCon (Atom { _ID = CI_Lambda }), args) -> raise (defaultRTErr { _ErrorCause = "`CI_Lambda\' cannot be a head of goal." })
-            (NCon (Atom { _ID = CI_If }), args) -> raise (defaultRTErr { _ErrorCause = "`CI_If\' cannot be a head of goal." })
+            (NCon (Atom { _ID = CI_Lambda }), args) -> raise (defaultRTErr { _ErrorCause = "`CI_Lambda\' cannot be head of goal." })
+            (NCon (Atom { _ID = CI_If }), args) -> raise (defaultRTErr { _ErrorCause = "`CI_If\' cannot be head of goal." })
             (NCon (Atom { _ID = CI_True }), args)
                 | [] <- args -> return (Just ctx, item)
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_True\' must be 0." })
@@ -129,8 +127,13 @@ runtime (Controller get_str put_str answer) = go where
                 | [goal1, goal2] <- args -> transit ((ctx, goal1) : (ctx, goal2) : item)
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Or\' must be 2." })
             (NCon (Atom { _ID = CI_Imply }), args)
-                | [fact1, goal2] <- args -> transit ((ctx { _Facts = fact1 : _Facts ctx }, goal2) : item)
-                | otherwise -> raise  (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Imply\' must be 2." })
+                | [fact1, goal2] <- args -> do
+                    put (fact1 : facts, stack)
+                    output <- transit ((ctx, goal2) : item)
+                    (facts', stack') <- get
+                    put (drop 1 facts', stack')
+                    return output
+                | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Imply\' must be 2." })
             (NCon (Atom { _ID = CI_Sigma }), args)
                 | [goal1] <- args -> do
                     uni <- liftIO newUnique
@@ -164,15 +167,15 @@ runtime (Controller get_str put_str answer) = go where
                             modify (enterID v (_Scope ctx))
                             instantiate (mkNApp fact1 (mkLVar v))
                         | otherwise = raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Pi\' must be 1." })
-                    instantiate_aux (NCon (Atom { _ID = CI_True }), args) = raise (defaultRTErr { _ErrorCause = "`CI_True\' cannot be a head of fact." })
-                    instantiate_aux (NCon (Atom { _ID = CI_Fail }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Fail\' cannot be a head of fact." })
-                    instantiate_aux (NCon (Atom { _ID = CI_Cut }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Cut\' cannot be a head of fact." })
-                    instantiate_aux (NCon (Atom { _ID = CI_And }), args) = raise (defaultRTErr { _ErrorCause = "`CI_And\' cannot be a head of fact." })
-                    instantiate_aux (NCon (Atom { _ID = CI_Or }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Or\' cannot be a head of fact." })
-                    instantiate_aux (NCon (Atom { _ID = CI_Imply }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Imply\' cannot be a head of fact." })
-                    instantiate_aux (NCon (Atom { _ID = CI_Sigma }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Sigma\' cannot be a head of fact." })
+                    instantiate_aux (NCon (Atom { _ID = CI_True }), args) = raise (defaultRTErr { _ErrorCause = "`CI_True\' cannot be head of fact." })
+                    instantiate_aux (NCon (Atom { _ID = CI_Fail }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Fail\' cannot be head of fact." })
+                    instantiate_aux (NCon (Atom { _ID = CI_Cut }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Cut\' cannot be head of fact." })
+                    instantiate_aux (NCon (Atom { _ID = CI_And }), args) = raise (defaultRTErr { _ErrorCause = "`CI_And\' cannot be head of fact." })
+                    instantiate_aux (NCon (Atom { _ID = CI_Or }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Or\' cannot be head of fact." })
+                    instantiate_aux (NCon (Atom { _ID = CI_Imply }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Imply\' cannot be head of fact." })
+                    instantiate_aux (NCon (Atom { _ID = CI_Sigma }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Sigma\' cannot be head of fact." })
                     instantiate_aux (NCon c, args) = return (List.foldl' mkNApp (mkNCon c) args, mkNCon (mkTermAtom CI_True))
-                item' <- fmap concat $ forM (_Facts ctx) $ \fact -> do
+                item' <- fmap concat $ forM facts $ \fact -> do
                     let failure = return []
                         success with = return [with]
                     ((conclusion, premise), labeling) <- lift (runStateT (instantiate (zonk fact)) (_Label ctx))
@@ -193,7 +196,7 @@ runtime (Controller get_str put_str answer) = go where
                                         , premise
                                         )
                         _ -> failure
-                put (item : stack)
+                put (facts, item : stack)
                 transit item'
             _ -> raise (defaultRTErr { _ErrorCause = "Every head of any goal must be a constant." })
     go :: Facts -> Goal -> IO Satisfied
@@ -201,7 +204,6 @@ runtime (Controller get_str put_str answer) = go where
         initCtx :: Context
         initCtx = Context
             { _Scope = 0
-            , _Facts = facts
             , _Subst = mempty
             , _Label = Labeling
                 { _VarLabel = Map.empty
@@ -213,13 +215,13 @@ runtime (Controller get_str put_str answer) = go where
         loop [] [] = return "-no"
         loop [] (item : stack) = loop item stack
         loop item stack = do
-            output <- runExceptT (runStateT (transit item) stack)
+            output <- runExceptT (runStateT (transit item) (facts, []))
             case output of
                 Left err -> do
                     print err
                     return "-err"
-                Right ((Nothing, item'), stack') -> loop item' stack'
-                Right ((Just ctx, item'), stack') -> do
+                Right ((Nothing, item'), (facts', stack')) -> loop item' stack'
+                Right ((Just ctx, item'), (facts', stack')) -> do
                     more <- answer ctx
                     if more
                         then loop item' stack'
