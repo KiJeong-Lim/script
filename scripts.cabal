@@ -17,8 +17,8 @@ library
     build-depends:  base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
     exposed-modules:
         Lib.Tests
-    other-modules:
         Lib.Base
+    other-modules:
 
 executable aladdin
     hs-source-dirs: src
@@ -26,6 +26,9 @@ executable aladdin
     default-language: Haskell2010
     build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, pretty-terminal >= 0.1.0.0
     other-modules:
+        Aladdin.BackEnd.Kernel.HOPU
+        Aladdin.BackEnd.Kernel.Runtime
+        Aladdin.BackEnd.Back
         Aladdin.Main
 
 executable jasmine

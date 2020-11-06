@@ -1,4 +1,4 @@
 module Aladdin.Main where
 
-main :: IO ()
-main = undefined
+runAladdin :: IO ()
+runAladdin = undefined
