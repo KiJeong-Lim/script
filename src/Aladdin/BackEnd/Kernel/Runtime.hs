@@ -122,14 +122,14 @@ runtime (Controller get_str put_str answer) program = go where
                 | [] <- args -> return (Just ctx, dummy)
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_True\' must be 0." })
             (NCon (Atom { _ID = CI_Cut }), args)
-                | [] <- args -> do
-                    sequence
-                        [ do
-                            (hypotheses, stack) <- get
-                            put (Map.delete uni hypotheses, stack)
-                        | Discharge uni <- dummy
-                        ]
-                    return (Just ctx, [])
+                | [] <- args -> return
+                    ( Just ctx
+                    , do
+                        item <- dummy
+                        case item of
+                            Proves ctx goal -> []
+                            Discharge uni -> return item
+                    )
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Cut\' must be 0." })
             (NCon (Atom { _ID = CI_Fail }), args)
                 | [] <- args -> transit dummy
@@ -164,6 +164,9 @@ runtime (Controller get_str put_str answer) program = go where
                         ctx' = ctx { _Label = enterID c (_Scope ctx + 1) (_Label ctx), _Scope = _Scope ctx + 1 }
                     transit (Proves ctx' (mkNApp goal1 (mkNCon c)) : dummy)
                 | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Pi\' must be 1." })
+            (NCon (Atom { _ID = CI_ChrL ch }), args) -> raise (defaultRTErr { _ErrorCause = "A character cannot be head of goal." })
+            (NCon (Atom { _ID = CI_NatL n }), args) -> raise (defaultRTErr { _ErrorCause = "A natural number cannot be head of goal." })
+            (NCon (Atom { _ID = CI_BuiltIn built_in }), args) -> runBuiltIn built_in args ctx dummy
             (NCon pred, args) -> do
                 let instantiate = instantiate_aux . unfoldlNApp . rewrite HNF
                     instantiate_aux (NCon (Atom { _ID = CI_Lambda }), args)
@@ -190,6 +193,9 @@ runtime (Controller get_str put_str answer) program = go where
                     instantiate_aux (NCon (Atom { _ID = CI_Or }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Or\' cannot be head of fact." })
                     instantiate_aux (NCon (Atom { _ID = CI_Imply }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Imply\' cannot be head of fact." })
                     instantiate_aux (NCon (Atom { _ID = CI_Sigma }), args) = raise (defaultRTErr { _ErrorCause = "`CI_Sigma\' cannot be head of fact." })
+                    instantiate_aux (NCon (Atom { _ID = CI_ChrL ch }), args) = raise (defaultRTErr { _ErrorCause = "A character cannot be head of fact." })
+                    instantiate_aux (NCon (Atom { _ID = CI_NatL n }), args) = raise (defaultRTErr { _ErrorCause = "A natural number cannot be head of fact." })
+                    instantiate_aux (NCon (Atom { _ID = CI_BuiltIn built_in }), args) = raise (defaultRTErr { _ErrorCause = "A natural number cannot be head of fact." })
                     instantiate_aux (NCon c, args) = return (List.foldl' mkNApp (mkNCon c) args, mkNCon (mkTermAtom CI_True))
                 dummy' <- fmap concat $ forM facts $ \fact -> do
                     let failure = return []
@@ -219,6 +225,8 @@ runtime (Controller get_str put_str answer) program = go where
         (hypotheses, stack) <- get
         put (Map.delete uni hypotheses, stack)
         transit dummy
+    runBuiltIn :: BuiltIn -> [TermNode] -> Context -> Dummy -> StateT (Map.Map Unique Fact, Stack) (ExceptT RTErr IO) (Context, Dummy)
+    runBuiltIn built_in args ctx dummy = undefined
     go :: Goal -> IO Satisfied
     go goal = loop Map.empty [Proves initCtx goal] [] where
         initCtx :: Context

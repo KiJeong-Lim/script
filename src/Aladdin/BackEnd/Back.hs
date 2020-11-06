@@ -47,10 +47,26 @@ data CI
     | CI_Imply
     | CI_Sigma
     | CI_Pi
-    | CI_Arrow
     | CI_ChrL Char
-    | CI_Cons
-    | CI_Nil
+    | CI_NatL Integer
+    | CI_BuiltIn BuiltIn
+    deriving (Eq, Ord)
+
+data BuiltIn
+    = BI_o
+    | BI_arrow
+    | BI_list
+    | BI_char
+    | BI_nat
+    | BI_cons
+    | BI_nil
+    | BI_plus
+    | BI_mult
+    | BI_equal
+    | BI_leq
+    | BI_geq
+    | BI_is_var
+    | BI_assert
     deriving (Eq, Ord)
 
 data TermNode
@@ -102,6 +118,7 @@ data ShowNode
     | ShowTVar String
     | ShowIAbs Int ShowNode
     | ShowIApp ShowNode ShowNode
+    | ShowNatL Integer
     | ShowChrL Char
     | ShowStrL String
     | ShowList [ShowNode]
@@ -169,10 +186,29 @@ instance Show CI where
         go CI_Imply = strstr "__imply"
         go CI_Sigma = strstr "__sigma"
         go CI_Pi = strstr "__pi"
-        go CI_Arrow = strstr "__arrow"
-        go (CI_ChrL chr) = showsPrec 0 chr 
-        go CI_Cons = strstr "__cons"
-        go CI_Nil = strstr "__nil"
+        go (CI_ChrL chr) = showsPrec 0 chr
+        go (CI_NatL nat) = showsPrec 0 nat
+        go (CI_BuiltIn built_in) = showsPrec 0 built_in
+
+instance Show BuiltIn where
+    show = flip (showsPrec 0) ""
+    showList = undefined
+    showsPrec _ = go where
+        go :: BuiltIn -> String -> String
+        go BI_o = strstr "__o"
+        go BI_arrow = strstr "__arrow"
+        go BI_list = strstr "__list"
+        go BI_char = strstr "__char"
+        go BI_nat = strstr "__nat"
+        go BI_nil = strstr "__nil"
+        go BI_cons = strstr "__cons"
+        go BI_plus = strstr "__plus"
+        go BI_mult = strstr "__mult"
+        go BI_leq = strstr "__leq"
+        go BI_geq = strstr "__geq"
+        go BI_equal = strstr "__equal"
+        go BI_is_var = strstr "__is_var"
+        go BI_assert = strstr "__assert"
 
 instance Read TermNode where
     readsPrec = flip go [] where
@@ -284,14 +320,19 @@ instance Show ShowNode where
             | otherwise = delta rest
         go :: ShowNode -> String -> String
         go (ShowIAbs v sn) = parenthesize 0 (strstr "W_" . showsPrec 0 v . strstr "\\ " . showsPrec 0 sn)
-        go (ShowOper sn1 ":-" sn2) = parenthesize 0 (showsPrec 5 sn1 . strstr " :- " . showsPrec 1 sn2)
-        go (ShowOper sn1 ";" sn2) = parenthesize 1 (showsPrec 1 sn1 . strstr "; " . showsPrec 2 sn2)
-        go (ShowOper sn1 "=>" sn2) = parenthesize 2 (showsPrec 5 sn1 . strstr " => " . showsPrec 2 sn2)
-        go (ShowOper sn1 "," sn2) = parenthesize 3 (showsPrec 3 sn1 . strstr ", " . showsPrec 4 sn2)
-        go (ShowOper sn1 "->" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " -> " . showsPrec 4 sn2)
-        go (ShowOper sn1 "::" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " :: " . showsPrec 4 sn2)
-        go (ShowTApp sn1 sn2) = parenthesize 5 (showsPrec 5 sn1 . strstr " " . showsPrec 6 sn2)
-        go (ShowIApp sn1 sn2) = parenthesize 5 (showsPrec 5 sn1 . strstr " " . showsPrec 6 sn2)
+        go (ShowOper sn1 "__if" sn2) = parenthesize 0 (showsPrec 5 sn1 . strstr " :- " . showsPrec 1 sn2)
+        go (ShowOper sn1 "__or" sn2) = parenthesize 1 (showsPrec 1 sn1 . strstr "; " . showsPrec 2 sn2)
+        go (ShowOper sn1 "__imply" sn2) = parenthesize 2 (showsPrec 5 sn1 . strstr " => " . showsPrec 2 sn2)
+        go (ShowOper sn1 "__comma" sn2) = parenthesize 3 (showsPrec 3 sn1 . strstr ", " . showsPrec 4 sn2)
+        go (ShowOper sn1 "__arrow" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " -> " . showsPrec 4 sn2)
+        go (ShowOper sn1 "__equal" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " = " . showsPrec 5 sn2)
+        go (ShowOper sn1 "__leq" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " =< " . showsPrec 5 sn2)
+        go (ShowOper sn1 "__geq" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " >= " . showsPrec 5 sn2)
+        go (ShowOper sn1 "__plus" sn2) = parenthesize 5 (showsPrec 5 sn1 . strstr " + " . showsPrec 6 sn2)
+        go (ShowOper sn1 "__mult" sn2) = parenthesize 6 (showsPrec 6 sn1 . strstr " * " . showsPrec 7 sn2)
+        go (ShowOper sn1 "__cons" sn2) = parenthesize 7 (showsPrec 8 sn1 . strstr " :: " . showsPrec 7 sn2)
+        go (ShowTApp sn1 sn2) = parenthesize 9 (showsPrec 9 sn1 . strstr " " . showsPrec 10 sn2)
+        go (ShowIApp sn1 sn2) = parenthesize 9 (showsPrec 9 sn1 . strstr " " . showsPrec 10 sn2)
         go (ShowTCon c) = parenthesize 10 (showsPrec 0 c)
         go (ShowDCon c) = parenthesize 10 (showsPrec 0 c)
         go (ShowIVar v) = parenthesize 10 (strstr "W_" . showsPrec 0 v)
@@ -299,6 +340,7 @@ instance Show ShowNode where
         go (ShowTVar v) = parenthesize 10 (strstr v)
         go (ShowStrL str) = parenthesize 10 (showsPrec 0 str)
         go (ShowChrL chr) = parenthesize 10 (showsPrec 0 chr)
+        go (ShowNatL nat) = parenthesize 10 (showsPrec 0 nat)
         go (ShowList sns) = parenthesize 10 (showList sns)
 
 getFreeLVs :: HasLVar expr => expr -> Set.Set LogicVar
@@ -413,23 +455,13 @@ showTerm = fst . runIdentity . uncurry (runStateT . format . erase) . runIdentit
         | isType c = case _ID c of
             CI_Unique uni -> return (ShowTCon ("tc_" ++ show (hashUnique uni)))
             CI_Named str -> return (ShowTCon str)
-            CI_Arrow -> return (ShowTCon "__arrow")
-            CI_Lambda -> return (ShowTCon "__lambda")
+            ci -> return (ShowTCon (show ci))
         | otherwise = case _ID c of
             CI_Unique uni -> return (ShowDCon ("c_" ++ show (hashUnique uni)))
             CI_Named str -> return (ShowDCon str)
-            CI_If -> return (ShowDCon "__if")
-            CI_True -> return (ShowDCon "__and")
-            CI_Fail -> return (ShowDCon "__fail")
-            CI_Cut -> return (ShowDCon "__cut")
-            CI_And -> return (ShowDCon "__and")
-            CI_Or -> return (ShowDCon "__or")
-            CI_Imply -> return (ShowDCon "__imply")
-            CI_Sigma -> return (ShowDCon "__sigma")
-            CI_Pi -> return (ShowDCon "__pi")
+            CI_NatL nat -> return (ShowNatL nat)
             CI_ChrL chr -> return (ShowChrL chr)
-            CI_Cons -> return (ShowDCon "__cons")
-            CI_Nil -> return (ShowDCon "__nil")
+            ci -> return (ShowDCon (show ci))
     make vs (NApp t1 t2) = do
         t1_rep <- make vs t1
         t2_rep <- make vs t2
@@ -463,30 +495,30 @@ showTerm = fst . runIdentity . uncurry (runStateT . format . erase) . runIdentit
         sn2' <- format sn2
         case sn2' of
             ShowStrL str -> return (ShowStrL (chr : str))
-            _ -> return (ShowOper (ShowChrL chr) "::" sn2')
+            _ -> return (ShowOper (ShowChrL chr) "__cons" sn2')
     format (ShowIApp (ShowIApp (ShowDCon "__cons") sn1) sn2) = do
         sn1' <- format sn1
         sn2' <- format sn2
         case sn2' of
             ShowList sns' -> return (ShowList (sn1' : sns'))
-            _ -> return (ShowOper sn1' "::" sn2')
+            _ -> return (ShowOper sn1' "__cons" sn2')
     format (ShowIApp (ShowIApp (ShowDCon c) sn1) sn2)
-        | Just rep <- Map.lookup c mapsInfixDConToRep = do
+        | c `elem` infixdcons = do
             sn1' <- format sn1
             sn2' <- format sn2
-            return (ShowOper sn1' rep sn2')
+            return (ShowOper sn1' c sn2')
     format (ShowIApp (ShowDCon c) sn1)
-        | Just rep <- Map.lookup c mapsInfixDConToRep = do
+        | c `elem` infixdcons = do
             sn1' <- format sn1
             v <- get
             put (v + 1)
-            return (ShowIAbs v (ShowOper sn1' rep (ShowIVar v)))
+            return (ShowIAbs v (ShowOper sn1' c (ShowIVar v)))
     format (ShowDCon c)
-        | Just rep <- Map.lookup c mapsInfixDConToRep = do
+        | c `elem` infixdcons = do
             v <- get
             put (v + 2)
-            return (ShowIAbs v (ShowIAbs (v + 1) (ShowOper (ShowIVar (v + 1)) rep (ShowIVar (v + 1)))))
-    format (ShowDCon c) = return (ShowDCon (maybe c id (Map.lookup c mapsReservedDConToRep)))
+            return (ShowIAbs v (ShowIAbs (v + 1) (ShowOper (ShowIVar (v + 1)) c (ShowIVar (v + 1)))))
+    format (ShowDCon c) = return (ShowDCon (maybe c id (Map.lookup c mapsReservedConToRep)))
     format (ShowIVar v) = return (ShowIVar v)
     format (ShowLVar v) = return (ShowLVar v)
     format (ShowTVar v) = return (ShowTVar v)
@@ -505,25 +537,39 @@ showTerm = fst . runIdentity . uncurry (runStateT . format . erase) . runIdentit
     format (ShowTApp (ShowTApp (ShowTCon "__arrow") sn1) sn2) = do
         sn1' <- format sn1
         sn2' <- format sn2
-        return (ShowOper sn1' "->" sn2')
+        return (ShowOper sn1' "__arrow" sn2')
     format (ShowTApp sn1 sn2) = do
         sn1' <- format sn1
         sn2' <- format sn2
         return (ShowTApp sn1' sn2')
-    format (ShowTCon c) = return (ShowTCon c)
-    mapsInfixDConToRep :: Map.Map String String
-    mapsInfixDConToRep = Map.fromList
-        [ ("__if", ":-")
-        , ("__and", ",")
-        , ("__or", ";")
-        , ("__imply", "=>")
-        , ("__cons", "::")
+    format (ShowTCon c) = return (ShowTCon (maybe c id (Map.lookup c mapsReservedConToRep)))
+    infixdcons :: [String]
+    infixdcons = concat
+        [ map show
+            [ CI_If
+            , CI_And
+            , CI_Or
+            , CI_Imply
+            ]
+        , map show
+            [ BI_plus
+            , BI_mult
+            , BI_leq
+            , BI_geq
+            , BI_equal
+            ]
         ]
-    mapsReservedDConToRep :: Map.Map String String
-    mapsReservedDConToRep = Map.fromList
+    mapsReservedConToRep :: Map.Map String String
+    mapsReservedConToRep = Map.fromList
         [ ("__pi", "pi")
         , ("__sigma", "sigma")
         , ("__cut", "!")
         , ("__fail", "fail")
         , ("__true", "true")
+        , ("__is_var", "is_var")
+        , ("__assert", "assert")
+        , ("__o", "o")
+        , ("__list", "list")
+        , ("__char", "char")
+        , ("__nat", "nat")
         ]
