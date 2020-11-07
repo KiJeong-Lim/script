@@ -20,16 +20,16 @@ type Facts = [Fact]
 
 type Goal = TermNode
 
-type Stack = [(Context, [Goal])]
+type Dummy = (Facts, Goal)
 
-type Dummy = [Stack]
+type Stack = [(Context, [Dummy])]
 
 type Satisfied = Bool
 
 data RTErr
     = RTErr
         { _ErrorCause :: String
-        , _CurrentEnv :: (Stack, Dummy)
+        , _CurrentEnv :: (Stack, [Stack])
         }
     deriving ()
 
@@ -38,7 +38,16 @@ data Controller
         { _GetStr :: IO (Maybe String)
         , _PutStr :: String -> IO ()
         , _Answer :: Context -> IO Satisfied
-        , _Run_BI :: BuiltIn -> [TermNode] -> Context -> IO Context
+        , _Run_BI :: (BuiltIn, [TermNode]) -> Context -> Facts -> IO Context
+        }
+    deriving ()
+
+data Context
+    = Context
+        { _Scope :: ScopeLevel
+        , _Subst :: VarBinding
+        , _Label :: Labeling
+        , _Lefts :: [Disagreement]
         }
     deriving ()
 
@@ -52,9 +61,9 @@ instance Show RTErr where
 
 showStack :: Indentation -> Stack -> String -> String
 showStack space = strcat . map go where
-    go :: (Context, [Goal]) -> String -> String
-    go (ctx, goals) = strcat
-        [ pindent space . strstr "- goal = " . plist (space + 4) (map (showsPrec 0) goals) . nl
+    go :: (Context, [(Facts, Goal)]) -> String -> String
+    go (ctx, dummy) = strcat
+        [ pindent space . strstr "- progressings = " . plist (space + 4) [ ppunc ", " (map (showsPrec 0) facts) . strstr " |- " . showsPrec 0 goal | (facts, goal) <- dummy ] . nl
         , pindent space . strstr "- context = Context" . nl
         , pindent (space + 4) . strstr "{ " . strstr "_Scope = " . showsPrec 0 (_Scope ctx) . nl
         , pindent (space + 4) . strstr ", " . strstr "_Subst = " . plist (space + 8) [ showsPrec 0 (LVar v) . strstr " +-> " . showsPrec 0 t | (v, t) <- Map.toList (getVarBinding (_Subst ctx)) ] . nl
@@ -62,7 +71,7 @@ showStack space = strcat . map go where
         , pindent (space + 4) . strstr "} " . nl
         ]
 
-showsCurrentState :: Stack -> Dummy -> String -> String
+showsCurrentState :: Stack -> [Stack] -> String -> String
 showsCurrentState stack1 stacks2 = strcat
     [ strstr "* The top of the stack is:" . nl
     , showStack 4 stack1 . nl
@@ -79,62 +88,62 @@ showsCurrentState stack1 stacks2 = strcat
 
 runtime :: Controller -> Facts -> Goal -> ExceptT RTErr IO Satisfied
 runtime (Controller get_str put_str answer runBuiltIn) = go where
-    transition :: Stack -> Dummy -> ExceptT RTErr IO Satisfied
+    transition :: Stack -> [Stack] -> ExceptT RTErr IO Satisfied
     transition [] [] = return False
     transition [] (stack : stacks) = transition stack stacks
-    transition ((ctx, goals) : stack) stacks = do
+    transition ((ctx, dummy) : stack) stacks = do
         let zonk = rewrite HNF . flatten (_Subst ctx)
             raise = throwE
             defaultRTErr = RTErr
                 { _ErrorCause = "An unknown error occured."
-                , _CurrentEnv = (((ctx, goals) : stack), stacks)
+                , _CurrentEnv = (((ctx, dummy) : stack), stacks)
                 }
-        liftIO (put_str (showsCurrentState ((ctx, goals) : stack) stacks ""))
+        liftIO (put_str (showsCurrentState ((ctx, dummy) : stack) stacks ""))
         liftIO get_str
-        case goals of
+        case dummy of
             [] -> do
                 more <- liftIO (answer ctx)
                 if more then transition stack stacks else return True
-            goal : goals -> case unfoldlNApp (zonk goal) of
+            (facts, goal) : dummy -> case unfoldlNApp (zonk goal) of
                 (NCon (Atom { _ID = CI_Lambda }), args) -> raise (defaultRTErr { _ErrorCause = "`CI_Lambda\' cannot be head of goal." })
                 (NCon (Atom { _ID = CI_If }), args) -> raise (defaultRTErr { _ErrorCause = "`CI_If\' cannot be head of goal." })
                 (NCon (Atom { _ID = CI_True }), args)
-                    | [] <- args -> transition ((ctx, goals) : stack) stacks
+                    | [] <- args -> transition ((ctx, dummy) : stack) stacks
                     | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_True\' must be 0." })
                 (NCon (Atom { _ID = CI_Cut }), args)
-                    | [] <- args -> transition [(ctx, goals)] stacks
+                    | [] <- args -> transition [(ctx, dummy)] stacks
                     | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Cut\' must be 0." })
                 (NCon (Atom { _ID = CI_Fail }), args)
                     | [] <- args -> transition stack stacks
                     | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Fail\' must be 0." })
                 (NCon (Atom { _ID = CI_And }), args)
-                    | [goal1, goal2] <- args -> transition ((ctx, goal1 : goal2 : goals) : stack) stacks
+                    | [goal1, goal2] <- args -> transition ((ctx, (facts, goal1) : (facts, goal2) : dummy) : stack) stacks
                     | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_And\' must be 2." })
                 (NCon (Atom { _ID = CI_Or }), args)
-                    | [goal1, goal2] <- args -> transition ((ctx, goal1 : goals) : (ctx, goal2 : goals) : stack) stacks
+                    | [goal1, goal2] <- args -> transition ((ctx, (facts, goal1) : dummy) : (ctx, (facts, goal2) : dummy) : stack) stacks
                     | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Or\' must be 2." })
                 (NCon (Atom { _ID = CI_Imply }), args)
-                    | [fact1, goal2] <- args -> transition ((ctx { _Facts = fact1 : _Facts ctx }, goal2 : goals) : stack) stacks
+                    | [fact1, goal2] <- args -> transition ((ctx, (fact1 : facts, goal2) : dummy) : stack) stacks
                     | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Imply\' must be 2." })
                 (NCon (Atom { _ID = CI_Sigma }), args)
                     | [goal1] <- args -> do
                         uni <- liftIO newUnique
                         let v = mkTermAtom (VI_Unique uni)
                             ctx' = ctx { _Label = enterID v (_Scope ctx) (_Label ctx) }
-                        transition ((ctx', mkNApp goal1 (mkLVar v) : goals) : stack) stacks
+                        transition ((ctx', (facts, mkNApp goal1 (mkLVar v)) : dummy) : stack) stacks
                     | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Sigma\' must be 1." })
                 (NCon (Atom { _ID = CI_Pi }), args)
                     | [goal1] <- args -> do
                         uni <- liftIO newUnique
                         let c = mkTermAtom (CI_Unique uni)
                             ctx' = ctx { _Label = enterID c (_Scope ctx + 1) (_Label ctx), _Scope = _Scope ctx + 1 }
-                        transition ((ctx', mkNApp goal1 (mkNCon c) : goals) : stack) stacks
+                        transition ((ctx', (facts, mkNApp goal1 (mkNCon c)) : dummy) : stack) stacks
                     | otherwise -> raise (defaultRTErr { _ErrorCause = "The number of arguments of `CI_Pi\' must be 1." })
                 (NCon (Atom { _ID = CI_ChrL ch }), args) -> raise (defaultRTErr { _ErrorCause = "A character cannot be head of goal." })
                 (NCon (Atom { _ID = CI_NatL n }), args) -> raise (defaultRTErr { _ErrorCause = "A natural number cannot be head of goal." })
                 (NCon (Atom { _ID = CI_BuiltIn built_in }), args) -> do
-                    ctx' <- liftIO (runBuiltIn built_in args ctx)
-                    transition ((ctx', goals) : stack) stacks
+                    ctx' <- liftIO (runBuiltIn (built_in, args) ctx facts)
+                    transition ((ctx', dummy) : stack) stacks
                 (NCon predicate, args) -> do
                     let instantiate = instantiate_aux . unfoldlNApp . rewrite HNF
                         instantiate_aux (NCon (Atom { _ID = CI_Lambda }), args)
@@ -166,9 +175,9 @@ runtime (Controller get_str put_str answer runBuiltIn) = go where
                         instantiate_aux (NCon (Atom { _ID = CI_BuiltIn built_in }), args) = raise (defaultRTErr { _ErrorCause = "A natural number cannot be head of fact." })
                         instantiate_aux (NCon c, args) = return (List.foldl' mkNApp (mkNCon c) args, mkNCon (mkTermAtom CI_True))
                         raise = lift . throwE
-                    stack' <- fmap concat $ forM (_Facts ctx) $ \fact -> do
+                    stack' <- fmap concat $ forM facts $ \fact -> do
                         let failure = return []
-                            success (ctx, goals) = return [(ctx, goals)]
+                            success (ctx, dummy) = return [(ctx, dummy)]
                         ((conclusion, premise), labeling) <- runStateT (instantiate (zonk fact)) (_Label ctx)
                         case unfoldlNApp (rewrite HNF conclusion) of
                             (NCon predicate', args')
@@ -184,13 +193,13 @@ runtime (Controller get_str put_str answer runBuiltIn) = go where
                                                 , _Subst = binding'
                                                 , _Lefts = disagreements'
                                                 }
-                                            , premise : goals
+                                            , (facts, premise) : dummy
                                             )
                             _ -> failure
                     transition stack' (stack : stacks)
                 _ -> raise (defaultRTErr { _ErrorCause = "Every head of any goal must be a constant." })
     go :: Facts -> Goal -> ExceptT RTErr IO Satisfied
-    go program query = transition [(initCtx, [query])] [] where
+    go program query = transition [(initCtx, [(program, query)])] [] where
         initCtx :: Context
         initCtx = Context
             { _Scope = 0
@@ -200,5 +209,4 @@ runtime (Controller get_str put_str answer runBuiltIn) = go where
                 , _ConLabel = Map.empty
                 }
             , _Lefts = []
-            , _Facts = program
             }

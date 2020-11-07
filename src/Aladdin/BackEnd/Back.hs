@@ -113,16 +113,6 @@ newtype VarBinding
     = VarBinding { getVarBinding :: Map.Map LogicVar TermNode }
     deriving (Eq)
 
-data Context
-    = Context
-        { _Scope :: ScopeLevel
-        , _Subst :: VarBinding
-        , _Label :: Labeling
-        , _Lefts :: [Disagreement]
-        , _Facts :: Facts
-        }
-    deriving ()
-
 data ShowNode
     = ShowIVar Int
     | ShowLVar String

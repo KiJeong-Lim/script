@@ -69,3 +69,9 @@ plist space (delta : deltas) = nl . pindent space . strstr "[ " . loop delta del
         [ delta1 . nl
         , pindent space . strstr ", " . loop delta2 deltas
         ]
+
+ppunc :: String -> [String -> String] -> String -> String
+ppunc str = go where
+    go :: [String -> String] -> String -> String
+    go [] = id
+    go (delta : deltas) = delta . strstr str . go deltas
