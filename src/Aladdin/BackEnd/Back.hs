@@ -66,6 +66,7 @@ data BuiltIn
     | BI_leq
     | BI_geq
     | BI_is_var
+    | BI_declare
     | BI_assert
     deriving (Eq, Ord)
 
@@ -111,6 +112,16 @@ data HopuEnv
 newtype VarBinding
     = VarBinding { getVarBinding :: Map.Map LogicVar TermNode }
     deriving (Eq)
+
+data Context
+    = Context
+        { _Scope :: ScopeLevel
+        , _Subst :: VarBinding
+        , _Label :: Labeling
+        , _Lefts :: [Disagreement]
+        , _Facts :: Facts
+        }
+    deriving ()
 
 data ShowNode
     = ShowIVar Int
@@ -208,6 +219,7 @@ instance Show BuiltIn where
         go BI_geq = strstr "__geq"
         go BI_equal = strstr "__equal"
         go BI_is_var = strstr "__is_var"
+        go BI_declare = strstr "__declare"
         go BI_assert = strstr "__assert"
 
 instance Read TermNode where
@@ -567,6 +579,7 @@ showTerm = fst . runIdentity . uncurry (runStateT . format . erase) . runIdentit
         , ("__fail", "fail")
         , ("__true", "true")
         , ("__is_var", "is_var")
+        , ("__declare", "declare")
         , ("__assert", "assert")
         , ("__o", "o")
         , ("__list", "list")
