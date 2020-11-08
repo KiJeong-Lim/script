@@ -63,7 +63,7 @@ showStack :: Indentation -> Stack -> String -> String
 showStack space = strcat . map go where
     go :: (Context, [(Facts, Goal)]) -> String -> String
     go (ctx, dummy) = strcat
-        [ pindent space . strstr "- progressings = " . plist (space + 4) [ ppunc ", " (map (showsPrec 0) facts) . strstr " |- " . showsPrec 0 goal | (facts, goal) <- dummy ] . nl
+        [ pindent space . strstr "- progressings = " . plist (space + 4) [ strstr "?- " . showsPrec 0 goal | (facts, goal) <- dummy ] . nl
         , pindent space . strstr "- context = Context" . nl
         , pindent (space + 4) . strstr "{ " . strstr "_Scope = " . showsPrec 0 (_Scope ctx) . nl
         , pindent (space + 4) . strstr ", " . strstr "_Subst = " . plist (space + 8) [ showsPrec 0 (LVar v) . strstr " +-> " . showsPrec 0 t | (v, t) <- Map.toList (getVarBinding (_Subst ctx)) ] . nl
