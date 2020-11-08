@@ -66,7 +66,7 @@ showsCurrentState stack1 stacks2 = strcat
     ]
 
 runtime :: Controller -> Facts -> Goal -> ExceptT RTErr IO Satisfied
-runtime (Controller get_str put_str answer run_solver run_prover) = go where
+runtime (Controller get_str put_str answer run_solver) = go where
     runBuiltIn :: (BuiltIn, [TermNode]) -> Facts -> Context -> ExceptT String IO (Maybe Context)
     runBuiltIn (built_in, args) facts ctx
         = case built_in of
@@ -81,7 +81,11 @@ runtime (Controller get_str put_str answer run_solver run_prover) = go where
                     notLVar -> return Nothing
                 | otherwise -> throwE ("The number of arguments of `BI_is_var\' must be 2.")
             BI_check
-                | [arg1] <- args -> liftIO (run_prover facts ctx arg1)
+                | [arg1] <- args -> case unfoldlNApp (rewrite HNF arg1) of
+                    (NCon predicate, args)
+                        | Atom { _ID = CI_Named str } <- predicate -> liftIO (run_solver facts (ctx { _Lefts = Statement predicate args : _Lefts ctx }))
+                        | Atom { _ID = CI_Unique uni } <- predicate -> liftIO (run_solver facts (ctx { _Lefts = Statement predicate args : _Lefts ctx }))
+                    bad_input -> throwE ("Bad input is given to `BI_check\'.")
                 | otherwise -> throwE ("The number of arguments of `BI_check\' must be 1.")
             BI_assert
                 | [arg1] <- args -> case unfoldlNApp (rewrite HNF arg1) of

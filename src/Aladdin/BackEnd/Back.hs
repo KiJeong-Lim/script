@@ -145,7 +145,6 @@ data Controller
         , _PutStr :: String -> IO ()
         , _Answer :: Context -> IO Satisfied
         , _Solver :: Facts -> Context -> IO (Maybe Context)
-        , _Prover :: Facts -> Context -> Goal -> IO (Maybe Context)
         }
     deriving ()
 
