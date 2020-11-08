@@ -22,6 +22,16 @@ type SuspEnv = [SuspItem]
 
 type ScopeLevel = Int
 
+type Satisfied = Bool
+
+type PropVar = Unique
+
+type Fact = TermNode
+
+type Facts = [Fact]
+
+type Goal = TermNode
+
 data Atom id
     = Atom
         { isType :: Bool
@@ -66,8 +76,16 @@ data BuiltIn
     | BI_leq
     | BI_geq
     | BI_is_var
-    | BI_declare
+    | BI_check
     | BI_assert
+    | BI_contradiction
+    | BI_negation
+    | BI_conjunction
+    | BI_disjunction
+    | BI_implication
+    | BI_biconditional
+    | BI_universal
+    | BI_existential
     deriving (Eq, Ord)
 
 data TermNode
@@ -112,6 +130,47 @@ data HopuEnv
 newtype VarBinding
     = VarBinding { getVarBinding :: Map.Map LogicVar TermNode }
     deriving (Eq)
+
+data Disagreement
+    = TermNode :=?=: TermNode
+    deriving (Eq)
+
+data Controller
+    = Controller
+        { _GetStr :: IO (Maybe String)
+        , _PutStr :: String -> IO ()
+        , _Answer :: Context -> IO Satisfied
+        , _Run_BI :: (BuiltIn, [TermNode]) -> Context -> Facts -> IO Context
+        , _Solver :: [Contstraint] -> Labeling -> IO (Maybe (HopuEnv, [Contstraint]))
+        }
+    deriving ()
+
+data Context
+    = Context
+        { _Scope :: ScopeLevel
+        , _Subst :: VarBinding
+        , _Label :: Labeling
+        , _Lefts :: [Contstraint]
+        }
+    deriving ()
+
+data Contstraint
+    = Disagreement Disagreement
+    | Statement Constant [TermNode]
+    | PropVar PropVar
+    deriving ()
+
+data Formula
+    = AtomFormula Contstraint
+    | Contradiction
+    | Negation Formula
+    | Conjunction Formula Formula
+    | Disjunction Formula Formula
+    | Implication Formula Formula
+    | Biconditional Formula Formula
+    | Universal (TermNode -> Formula)
+    | Existential (TermNode -> Formula)
+    deriving ()
 
 data ShowNode
     = ShowIVar Int
@@ -209,8 +268,16 @@ instance Show BuiltIn where
         go BI_geq = strstr "__geq"
         go BI_equal = strstr "__equal"
         go BI_is_var = strstr "__is_var"
-        go BI_declare = strstr "__declare"
+        go BI_check = strstr "__check"
         go BI_assert = strstr "__assert"
+        go BI_contradiction = strstr "__contradiction"
+        go BI_negation = strstr "__negation"
+        go BI_conjunction = strstr "__conjunction"
+        go BI_disjunction = strstr "__disjunction"
+        go BI_implication = strstr "__implication"
+        go BI_biconditional = strstr "__biconditional"
+        go BI_universal = strstr "__universal"
+        go BI_existential = strstr "__existential"
 
 instance Read TermNode where
     readsPrec = flip go [] where
@@ -308,6 +375,54 @@ instance Monoid VarBinding where
         map0 :: Map.Map LogicVar TermNode
         map0 = Map.empty
 
+instance Show Disagreement where
+    show = flip (showsPrec 0) ""
+    showList = ppunc "\n" . map (showsPrec 0)
+    showsPrec _ (lhs :=?=: rhs) = showsPrec 0 lhs . strstr " =?= " . showsPrec 0 rhs
+
+instance HasLVar Disagreement where
+    getFreeLVars (lhs :=?=: rhs) = getFreeLVars lhs . getFreeLVars rhs
+    applyBinding theta (lhs :=?=: rhs) = applyBinding theta lhs :=?=: applyBinding theta rhs
+
+instance Show Contstraint where
+    show = flip (showsPrec 0) ""
+    showList = ppunc "\n" . map (showsPrec 0)
+    showsPrec _ = go where
+        go :: Contstraint -> String -> String
+        go (Disagreement disagreement) = showsPrec 0 disagreement
+        go (Statement predicate args) = showsPrec 0 (List.foldl' mkNApp (mkNCon predicate) args)
+        go (PropVar uni) = strstr "p_" . showsPrec 0 (hashUnique uni)
+
+instance HasLVar Contstraint where
+    getFreeLVars (Disagreement disagreement) = getFreeLVars disagreement
+    getFreeLVars (Statement predicate args) = getFreeLVars args
+    getFreeLVars (PropVar uni) = id
+    applyBinding theta (Disagreement disagreement) = Disagreement (applyBinding theta disagreement)
+    applyBinding theta (Statement predicate args) = Statement predicate (applyBinding theta args)
+    applyBinding theta (PropVar uni) = PropVar uni
+
+instance HasLVar Formula where
+    getFreeLVars (AtomFormula contstraint) = getFreeLVars contstraint
+    getFreeLVars (Contradiction) = id
+    getFreeLVars (Negation form1) = getFreeLVars form1
+    getFreeLVars (Conjunction form1 form2) = getFreeLVars form1 . getFreeLVars form2
+    getFreeLVars (Disjunction form1 form2) = getFreeLVars form1 . getFreeLVars form2
+    getFreeLVars (Implication form1 form2) = getFreeLVars form1 . getFreeLVars form2
+    getFreeLVars (Biconditional form1 form2) = getFreeLVars form1 . getFreeLVars form2
+    getFreeLVars (Universal form1) = getFreeLVars (form1 (mkNCon (mkTermAtom (CI_NatL 0))))
+    getFreeLVars (Existential form1) = getFreeLVars (form1 (mkNCon (mkTermAtom (CI_NatL 0))))
+    applyBinding theta = go where
+        go :: Formula -> Formula
+        go (AtomFormula contstraint) = AtomFormula (applyBinding theta contstraint)
+        go (Contradiction) = Contradiction
+        go (Negation form1) = Negation (go form1)
+        go (Conjunction form1 form2) = Conjunction (go form1) (go form2)
+        go (Disjunction form1 form2) = Disjunction (go form1) (go form2)
+        go (Implication form1 form2) = Implication (go form1) (go form2)
+        go (Biconditional form1 form2) = Biconditional (go form1) (go form2)
+        go (Universal form1) = Universal (go . form1)
+        go (Existential form1) = Existential (go . form1)
+
 instance Show ShowNode where
     show = flip (showsPrec 0) ""
     showList [] = strstr "[]"
@@ -326,13 +441,17 @@ instance Show ShowNode where
         go (ShowOper sn1 "__or" sn2) = parenthesize 1 (showsPrec 1 sn1 . strstr "; " . showsPrec 2 sn2)
         go (ShowOper sn1 "__imply" sn2) = parenthesize 2 (showsPrec 5 sn1 . strstr " => " . showsPrec 2 sn2)
         go (ShowOper sn1 "__comma" sn2) = parenthesize 3 (showsPrec 3 sn1 . strstr ", " . showsPrec 4 sn2)
+        go (ShowOper sn1 "__conjunction" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " /\\ " . showsPrec 5 sn2)
+        go (ShowOper sn1 "__disjunction" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " \\/ " . showsPrec 5 sn2)
+        go (ShowOper sn1 "__implication" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " -> " . showsPrec 5 sn2)
+        go (ShowOper sn1 "__biconditional" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " <-> " . showsPrec 5 sn2)
         go (ShowOper sn1 "__arrow" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " -> " . showsPrec 4 sn2)
-        go (ShowOper sn1 "__equal" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " = " . showsPrec 5 sn2)
-        go (ShowOper sn1 "__leq" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " =< " . showsPrec 5 sn2)
-        go (ShowOper sn1 "__geq" sn2) = parenthesize 4 (showsPrec 5 sn1 . strstr " >= " . showsPrec 5 sn2)
-        go (ShowOper sn1 "__plus" sn2) = parenthesize 5 (showsPrec 5 sn1 . strstr " + " . showsPrec 6 sn2)
-        go (ShowOper sn1 "__mult" sn2) = parenthesize 6 (showsPrec 6 sn1 . strstr " * " . showsPrec 7 sn2)
-        go (ShowOper sn1 "__cons" sn2) = parenthesize 7 (showsPrec 8 sn1 . strstr " :: " . showsPrec 7 sn2)
+        go (ShowOper sn1 "__equal" sn2) = parenthesize 5 (showsPrec 6 sn1 . strstr " = " . showsPrec 6 sn2)
+        go (ShowOper sn1 "__leq" sn2) = parenthesize 5 (showsPrec 6 sn1 . strstr " =< " . showsPrec 6 sn2)
+        go (ShowOper sn1 "__geq" sn2) = parenthesize 5 (showsPrec 6 sn1 . strstr " >= " . showsPrec 6 sn2)
+        go (ShowOper sn1 "__plus" sn2) = parenthesize 7 (showsPrec 6 sn1 . strstr " + " . showsPrec 7 sn2)
+        go (ShowOper sn1 "__mult" sn2) = parenthesize 7 (showsPrec 7 sn1 . strstr " * " . showsPrec 8 sn2)
+        go (ShowOper sn1 "__cons" sn2) = parenthesize 8 (showsPrec 9 sn1 . strstr " :: " . showsPrec 8 sn2)
         go (ShowTApp sn1 sn2) = parenthesize 9 (showsPrec 9 sn1 . strstr " " . showsPrec 10 sn2)
         go (ShowIApp sn1 sn2) = parenthesize 9 (showsPrec 9 sn1 . strstr " " . showsPrec 10 sn2)
         go (ShowTCon c) = parenthesize 10 (showsPrec 0 c)
@@ -397,6 +516,12 @@ flatten (VarBinding { getVarBinding = mapsto }) = go where
     go (NAbs t) = mkNAbs (go t)
     go (Susp t ol nl env) = mkSusp (go t) ol nl (lensForSusp go env)
 
+unMetaAbstraction :: (TermNode -> TermNode) -> TermNode
+unMetaAbstraction abstraction = mkNAbs (abstraction (mkNIdx 1))
+
+mkMetaAbstraction :: TermNode -> (TermNode -> TermNode)
+mkMetaAbstraction = mkNApp
+
 unfoldlNApp :: TermNode -> (TermNode, [TermNode])
 unfoldlNApp = flip go [] where
     go :: TermNode -> [TermNode] -> (TermNode, [TermNode])
@@ -438,6 +563,44 @@ rewriteWithSusp (Susp t ol nl env) ol' nl' env' option
 rewrite :: ReductionOption -> TermNode -> TermNode
 rewrite option t = rewriteWithSusp t 0 0 [] option
 
+makeFormula :: TermNode -> Formula
+makeFormula = uncurry go . unfoldlNApp . rewrite HNF where
+    go :: TermNode -> [TermNode] -> Formula
+    go predicate args
+        | NCon (Atom { _ID = CI_BuiltIn BI_contradiction }) <- predicate
+        , [] <- args
+        = Contradiction
+        | NCon (Atom { _ID = CI_BuiltIn BI_negation }) <- predicate
+        , [arg1] <- args
+        = Negation (makeFormula arg1)
+        | NCon (Atom { _ID = CI_BuiltIn BI_conjunction }) <- predicate
+        , [arg1, arg2] <- args
+        = Conjunction (makeFormula arg1) (makeFormula arg2)
+        | NCon (Atom { _ID = CI_BuiltIn BI_disjunction }) <- predicate
+        , [arg1, arg2] <- args
+        = Disjunction (makeFormula arg1) (makeFormula arg2)
+        | NCon (Atom { _ID = CI_BuiltIn BI_implication }) <- predicate
+        , [arg1, arg2] <- args
+        = Implication (makeFormula arg1) (makeFormula arg2)
+        | NCon (Atom { _ID = CI_BuiltIn BI_biconditional }) <- predicate
+        , [arg1, arg2] <- args
+        = Biconditional (makeFormula arg1) (makeFormula arg2)
+        | NCon (Atom { _ID = CI_BuiltIn BI_universal }) <- predicate
+        , [arg1] <- args
+        = Universal (makeFormula . mkMetaAbstraction arg1)
+        | NCon (Atom { _ID = CI_BuiltIn BI_existential }) <- predicate
+        , [arg1] <- args
+        = Existential (makeFormula . mkMetaAbstraction arg1)
+        | NCon (Atom { _ID = CI_BuiltIn BI_equal }) <- predicate
+        , [typ, arg1, arg2] <- args
+        = case rewrite NF typ of
+            NCon (Atom { _ID = CI_BuiltIn BI_nat }) -> AtomFormula (Statement (mkTermAtom (CI_BuiltIn BI_equal)) args)
+            _ -> AtomFormula (Disagreement (arg1 :=?=: arg2))
+        | NCon con <- predicate
+        = AtomFormula (Statement con args)
+        | otherwise
+        = undefined
+
 showTerm :: TermNode -> ShowNode
 showTerm = fst . runIdentity . uncurry (runStateT . format . erase) . runIdentity . flip runStateT 1 . make [] . rewrite NF where
     isTy :: ShowNode -> Bool
@@ -470,7 +633,9 @@ showTerm = fst . runIdentity . uncurry (runStateT . format . erase) . runIdentit
         if isTy t1_rep
             then return (ShowTApp t1_rep t2_rep)
             else return (ShowIApp t1_rep t2_rep)
-    make vs (NIdx i) = return (ShowIVar (vs !! (i - 1)))
+    make vs (NIdx i)
+        | 0 < i && i <= length vs = return (ShowIVar (vs !! (i - 1)))
+        | otherwise = error ("i = " ++ show i ++ ", vs = " ++ show vs ++ ";")
     make vs (LVar v)
         | isType v = case _ID v of
             VI_Unique uni -> return (ShowTVar ("TV_" ++ show (hashUnique uni)))
@@ -559,6 +724,10 @@ showTerm = fst . runIdentity . uncurry (runStateT . format . erase) . runIdentit
             , BI_leq
             , BI_geq
             , BI_equal
+            , BI_conjunction
+            , BI_disjunction
+            , BI_implication
+            , BI_biconditional
             ]
         ]
     mapsReservedConToRep :: Map.Map String String
@@ -569,10 +738,14 @@ showTerm = fst . runIdentity . uncurry (runStateT . format . erase) . runIdentit
         , ("__fail", "fail")
         , ("__true", "true")
         , ("__is_var", "is_var")
-        , ("__declare", "declare")
+        , ("__check", "check")
         , ("__assert", "assert")
         , ("__o", "o")
         , ("__list", "list")
         , ("__char", "char")
         , ("__nat", "nat")
+        , ("__contradiction", "_|_")
+        , ("__negation", "~")
+        , ("__universal", "forall")
+        , ("__existential", "exists")
         ]

@@ -76,8 +76,8 @@ instance Arbitrary Disagreement where
             rank2 <- genNat
             lhs <- genTerm rank1
             rhs <- genTerm rank2
-            return (Disagreement lhs rhs)
-    shrink (Disagreement lhs rhs) = [ Disagreement lhs' rhs' | (lhs', rhs') <- shrink (lhs, rhs) ]
+            return (lhs :=?=: rhs)
+    shrink (lhs :=?=: rhs) = [ lhs' :=?=: rhs' | (lhs', rhs') <- shrink (lhs, rhs) ]
 
 genNat :: Gen Int
 genNat = arbitrary `suchThat` (\n -> n >= 0)
@@ -112,7 +112,7 @@ hoputest disagreements labeling = do
 test :: Int -> IO ()
 test 1 = hoputest disagreements labeling where
     disagreements :: [Disagreement]
-    disagreements = [Disagreement (read "X c4 c1 c2 c3") (read "Y c5 c2 c1 c3")]
+    disagreements = [read "X c4 c1 c2 c3" :=?=: read "Y c5 c2 c1 c3"]
     labeling :: Labeling
     labeling = Labeling
         { _ConLabel = Map.fromList
@@ -129,7 +129,7 @@ test 1 = hoputest disagreements labeling where
         }
 test 2 = hoputest disagreements labeling where
     disagreements :: [Disagreement]
-    disagreements = [Disagreement (read "X c4 c1 c2 c3") (read "X c5 c2 c1 c3")]
+    disagreements = [read "X c4 c1 c2 c3" :=?=: read "X c5 c2 c1 c3"]
     labeling :: Labeling
     labeling = Labeling
         { _ConLabel = Map.fromList

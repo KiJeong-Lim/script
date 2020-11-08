@@ -16,13 +16,6 @@ import Lib.Base
 
 infix 3 +->
 
-data Disagreement
-    = Disagreement
-        { getLHS :: TermNode
-        , getRHS :: TermNode
-        }
-    deriving (Eq)
-
 data HopuFail
     = DownFail
     | UpFail
@@ -32,15 +25,6 @@ data HopuFail
     | BindFail
     | NotAPattern
     deriving (Eq)
-
-instance Show Disagreement where
-    show = flip (showsPrec 0) ""
-    showList = strcat . map (showsPrec 0)
-    showsPrec _ (Disagreement { getLHS = lhs, getRHS = rhs }) = showsPrec 0 lhs . strstr " =?= " . showsPrec 0 rhs . nl
-
-instance HasLVar Disagreement where
-    getFreeLVars (Disagreement lhs rhs) = getFreeLVars lhs . getFreeLVars rhs
-    applyBinding theta (Disagreement lhs rhs) = Disagreement (applyBinding theta lhs) (applyBinding theta rhs)
 
 (+->) :: LogicVar -> TermNode -> VarBinding
 v +-> t
@@ -242,7 +226,7 @@ simplify :: IORef Bool -> [Disagreement] -> StateT HopuEnv (ExceptT HopuFail IO)
 simplify changed = go where
     go :: [Disagreement] -> StateT HopuEnv (ExceptT HopuFail IO) [Disagreement]
     go [] = return []
-    go (Disagreement lhs rhs : disagreements) = aux (rewrite HNF lhs) (rewrite HNF rhs) where
+    go (lhs :=?=: rhs : disagreements) = aux (rewrite HNF lhs) (rewrite HNF rhs) where
         aux :: TermNode -> TermNode -> StateT HopuEnv (ExceptT HopuFail IO) [Disagreement]
         aux lhs rhs
             | (lambda1, lhs') <- viewNestedNAbs lhs
@@ -264,7 +248,7 @@ simplify changed = go where
             , (rhs_head, rhs_tail) <- unfoldlNApp rhs
             , isRigid lhs_head && isRigid rhs_head
             = if lhs_head == rhs_head && length lhs_tail == length rhs_tail
-                then go (zipWith Disagreement lhs_tail rhs_tail ++ disagreements)
+                then go ([ lhs :=?=: rhs | (lhs, rhs) <- zip lhs_tail rhs_tail ] ++ disagreements)
                 else lift (throwE RigidRigidFail)
             | (LVar var, parameters) <- unfoldlNApp lhs
             = do
@@ -293,7 +277,7 @@ simplify changed = go where
                 solveNext = do
                     disagreements' <- go disagreements
                     env <- get
-                    return (insert' (applyBinding (getVBinding env) (Disagreement lhs rhs)) disagreements)
+                    return (insert' (applyBinding (getVBinding env) (lhs :=?=: rhs)) disagreements)
 
 runHOPU :: [Disagreement] -> Labeling -> IO (Maybe (HopuEnv, [Disagreement]))
 runHOPU disagreements labeling = do

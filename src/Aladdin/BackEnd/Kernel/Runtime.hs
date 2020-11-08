@@ -14,40 +14,14 @@ import qualified Data.Set as Set
 import Data.Unique
 import Lib.Base
 
-type Fact = TermNode
-
-type Facts = [Fact]
-
-type Goal = TermNode
-
 type Dummy = (Facts, Goal)
 
 type Stack = [(Context, [Dummy])]
-
-type Satisfied = Bool
 
 data RTErr
     = RTErr
         { _ErrorCause :: String
         , _CurrentEnv :: (Stack, [Stack])
-        }
-    deriving ()
-
-data Controller
-    = Controller
-        { _GetStr :: IO (Maybe String)
-        , _PutStr :: String -> IO ()
-        , _Answer :: Context -> IO Satisfied
-        , _Run_BI :: (BuiltIn, [TermNode]) -> Context -> Facts -> IO Context
-        }
-    deriving ()
-
-data Context
-    = Context
-        { _Scope :: ScopeLevel
-        , _Subst :: VarBinding
-        , _Label :: Labeling
-        , _Lefts :: [Disagreement]
         }
     deriving ()
 
@@ -67,7 +41,7 @@ showStack space = strcat . map go where
         , pindent space . strstr "- context = Context" . nl
         , pindent (space + 4) . strstr "{ " . strstr "_Scope = " . showsPrec 0 (_Scope ctx) . nl
         , pindent (space + 4) . strstr ", " . strstr "_Subst = " . plist (space + 8) [ showsPrec 0 (LVar v) . strstr " +-> " . showsPrec 0 t | (v, t) <- Map.toList (getVarBinding (_Subst ctx)) ] . nl
-        , pindent (space + 4) . strstr ", " . strstr "_Lefts = " . plist (space + 8) [ showsPrec 0 lhs . strstr " =?= " . showsPrec 0 rhs | Disagreement lhs rhs <- _Lefts ctx ] . nl
+        , pindent (space + 4) . strstr ", " . strstr "_Lefts = " . plist (space + 8) [ showsPrec 0 constraint | constraint <- _Lefts ctx ] . nl
         , pindent (space + 4) . strstr "} " . nl
         ]
 
@@ -87,7 +61,7 @@ showsCurrentState stack1 stacks2 = strcat
     ]
 
 runtime :: Controller -> Facts -> Goal -> ExceptT RTErr IO Satisfied
-runtime (Controller get_str put_str answer runBuiltIn) = go where
+runtime (Controller get_str put_str answer runBuiltIn runSolver) = go where
     transition :: Stack -> [Stack] -> ExceptT RTErr IO Satisfied
     transition [] [] = return False
     transition [] (stack : stacks) = transition stack stacks
@@ -145,7 +119,8 @@ runtime (Controller get_str put_str answer runBuiltIn) = go where
                     ctx' <- liftIO (runBuiltIn (built_in, args) ctx facts)
                     transition ((ctx', dummy) : stack) stacks
                 (NCon predicate, args) -> do
-                    let instantiate = instantiate_aux . unfoldlNApp . rewrite HNF
+                    let raise = lift . throwE
+                        instantiate = instantiate_aux . unfoldlNApp . rewrite HNF
                         instantiate_aux (NCon (Atom { _ID = CI_Lambda }), args)
                             | [fact1] <- args = do
                                 uni <- liftIO newUnique
@@ -174,7 +149,6 @@ runtime (Controller get_str put_str answer runBuiltIn) = go where
                         instantiate_aux (NCon (Atom { _ID = CI_NatL n }), args) = raise (defaultRTErr { _ErrorCause = "A natural number cannot be head of fact." })
                         instantiate_aux (NCon (Atom { _ID = CI_BuiltIn built_in }), args) = raise (defaultRTErr { _ErrorCause = "A natural number cannot be head of fact." })
                         instantiate_aux (NCon c, args) = return (List.foldl' mkNApp (mkNCon c) args, mkNCon (mkTermAtom CI_True))
-                        raise = lift . throwE
                     stack' <- fmap concat $ forM facts $ \fact -> do
                         let failure = return []
                             success (ctx, dummy) = return [(ctx, dummy)]
@@ -182,16 +156,16 @@ runtime (Controller get_str put_str answer runBuiltIn) = go where
                         case unfoldlNApp (rewrite HNF conclusion) of
                             (NCon predicate', args')
                                 | predicate == predicate' && length args == length args' -> do
-                                    let disagreements = zipWith Disagreement args args' ++ _Lefts ctx
-                                        disagreements_are_zonked = True
-                                    output <- liftIO (runHOPU disagreements labeling)
+                                    let constraints = [ Disagreement (lhs :=?=: rhs) | (lhs, rhs) <- zip args args' ] ++ _Lefts ctx
+                                        constraints_are_zonkes = True
+                                    output <- liftIO (runSolver constraints labeling)
                                     case output of
                                         Nothing -> failure
-                                        Just (HopuEnv labeling' binding', disagreements') -> success
+                                        Just (HopuEnv labeling' binding', constraints') -> success
                                             ( ctx
                                                 { _Label = labeling'
                                                 , _Subst = binding'
-                                                , _Lefts = disagreements'
+                                                , _Lefts = constraints'
                                                 }
                                             , (facts, premise) : dummy
                                             )
