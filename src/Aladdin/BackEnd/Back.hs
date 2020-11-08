@@ -34,6 +34,8 @@ type Facts = [Fact]
 
 type Goal = TermNode
 
+type Depth = Int
+
 data Atom id
     = Atom
         { isType :: Bool
@@ -142,7 +144,8 @@ data Controller
         { _GetStr :: IO (Maybe String)
         , _PutStr :: String -> IO ()
         , _Answer :: Context -> IO Satisfied
-        , _Solver :: Context -> IO (Maybe Context)
+        , _Solver :: Facts -> Context -> IO (Maybe Context)
+        , _Prover :: Facts -> Context -> Goal -> IO (Maybe Context)
         }
     deriving ()
 

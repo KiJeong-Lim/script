@@ -65,11 +65,32 @@ showsCurrentState stack1 stacks2 = strcat
     , strstr "--------------------------------" . nl
     ]
 
-runBuiltIn :: (BuiltIn, [TermNode]) -> Context -> Facts -> IO Context
-runBuiltIn = undefined
-
 runtime :: Controller -> Facts -> Goal -> ExceptT RTErr IO Satisfied
-runtime (Controller get_str put_str answer run_solver) = go where
+runtime (Controller get_str put_str answer run_solver run_prover) = go where
+    runBuiltIn :: (BuiltIn, [TermNode]) -> Facts -> Context -> ExceptT String IO (Maybe Context)
+    runBuiltIn (built_in, args) facts ctx
+        = case built_in of
+            BI_equal
+                | [typ, arg1, arg2] <- args -> return (Just (ctx { _Lefts = Disagreement (arg1 :=?=: arg2) : _Lefts ctx }))
+                | otherwise -> throwE ("The number of arguments of `BI_equal\' must be 3.")
+            BI_leq -> return (Just (ctx { _Lefts = Statement (mkTermAtom (CI_BuiltIn built_in)) args : _Lefts ctx }))
+            BI_geq -> return (Just (ctx { _Lefts = Statement (mkTermAtom (CI_BuiltIn built_in)) args : _Lefts ctx }))
+            BI_is_var
+                | [typ, arg1] <- args -> case rewrite NF arg1 of
+                    LVar v -> return (Just ctx)
+                    notLVar -> return Nothing
+                | otherwise -> throwE ("The number of arguments of `BI_is_var\' must be 2.")
+            BI_check
+                | [arg1] <- args -> liftIO (run_prover facts ctx arg1)
+                | otherwise -> throwE ("The number of arguments of `BI_check\' must be 1.")
+            BI_assert
+                | [arg1] <- args -> case unfoldlNApp (rewrite HNF arg1) of
+                    (NCon predicate, args)
+                        | Atom { _ID = CI_Named str } <- predicate -> return (Just (ctx { _Lefts = Statement predicate args : _Lefts ctx }))
+                        | Atom { _ID = CI_Unique uni } <- predicate -> return (Just (ctx { _Lefts = Statement predicate args : _Lefts ctx }))
+                    bad_input -> throwE ("Bad input is given to `BI_assert\'.")
+                | otherwise -> throwE ("The number of arguments of `BI_assert\' must be 1.")
+            not_callable -> throwE ("The built-in operator `" ++ showsPrec 0 not_callable "\' is not callable.")
     transition :: Stack -> [Stack] -> ExceptT RTErr IO Satisfied
     transition [] [] = return False
     transition [] (stack : stacks) = transition stack stacks
@@ -124,8 +145,10 @@ runtime (Controller get_str put_str answer run_solver) = go where
                 (NCon (Atom { _ID = CI_ChrL ch }), args) -> raise (defaultRTErr { _ErrorCause = "A character cannot be head of goal." })
                 (NCon (Atom { _ID = CI_NatL n }), args) -> raise (defaultRTErr { _ErrorCause = "A natural number cannot be head of goal." })
                 (NCon (Atom { _ID = CI_BuiltIn built_in }), args) -> do
-                    ctx' <- liftIO (runBuiltIn (built_in, args) ctx facts)
-                    transition ((ctx', probes) : stack) stacks
+                    output <- catchE (runBuiltIn (built_in, args) facts ctx) $ \error_cause -> raise (defaultRTErr { _ErrorCause = error_cause })
+                    case output of
+                        Nothing -> transition stack stacks
+                        Just ctx' -> transition ((ctx', probes) : stack) stacks
                 (NCon predicate, args) -> do
                     let raise = lift . throwE
                         instantiate = instantiate_aux . unfoldlNApp . rewrite HNF
@@ -166,7 +189,7 @@ runtime (Controller get_str put_str answer run_solver) = go where
                                 | predicate == predicate' && length args == length args' -> do
                                     let constraints = [ Disagreement (lhs :=?=: rhs) | (lhs, rhs) <- zip args args' ] ++ _Lefts ctx
                                         constraints_are_zonkes = True
-                                    output <- liftIO (run_solver (ctx { _Lefts = constraints, _Label = labeling }))
+                                    output <- liftIO (run_solver facts (ctx { _Lefts = constraints, _Label = labeling }))
                                     case output of
                                         Nothing -> failure
                                         Just ctx' -> success (ctx', Probe scope facts premise : probes)
