@@ -139,31 +139,38 @@ data Disagreement
     = TermNode :=?=: TermNode
     deriving (Eq)
 
-data Controller
-    = Controller
-        { _GetStr :: IO (Maybe String)
-        , _PutStr :: String -> IO ()
-        , _Answer :: Context -> IO Satisfied
-        , _Solver :: Facts -> Context -> IO (Maybe Context)
-        }
+data SolverOption
+    = PushItToTheLimit
+    | MaxDepth Depth
+    | JustEquations
     deriving ()
 
 data Context
     = Context
         { _Subst :: VarBinding
         , _Label :: Labeling
-        , _Lefts :: [Contstraint]
+        , _Lefts :: [Constraint]
         }
     deriving ()
 
-data Contstraint
+data Controller
+    = Controller
+        { _GetStr :: IO (Maybe String)
+        , _PutStr :: String -> IO ()
+        , _Answer :: Context -> IO Satisfied
+        , _Solver :: Facts -> Context -> ExceptT String IO (Maybe Context)
+        , _MaxDep :: Depth
+        }
+    deriving ()
+
+data Constraint
     = Disagreement Disagreement
     | Statement Constant [TermNode]
     | PropVar PropVar
     deriving ()
 
 data Formula
-    = AtomFormula Contstraint
+    = AtomFormula Constraint
     | Contradiction
     | Negation Formula
     | Conjunction Formula Formula
@@ -386,16 +393,16 @@ instance HasLVar Disagreement where
     getFreeLVars (lhs :=?=: rhs) = getFreeLVars lhs . getFreeLVars rhs
     applyBinding theta (lhs :=?=: rhs) = applyBinding theta lhs :=?=: applyBinding theta rhs
 
-instance Show Contstraint where
+instance Show Constraint where
     show = flip (showsPrec 0) ""
     showList = ppunc "\n" . map (showsPrec 0)
     showsPrec _ = go where
-        go :: Contstraint -> String -> String
+        go :: Constraint -> String -> String
         go (Disagreement disagreement) = showsPrec 0 disagreement
         go (Statement predicate args) = showsPrec 0 (List.foldl' mkNApp (mkNCon predicate) args)
         go (PropVar uni) = strstr "p_" . showsPrec 0 (hashUnique uni)
 
-instance HasLVar Contstraint where
+instance HasLVar Constraint where
     getFreeLVars (Disagreement disagreement) = getFreeLVars disagreement
     getFreeLVars (Statement predicate args) = getFreeLVars args
     getFreeLVars (PropVar uni) = id

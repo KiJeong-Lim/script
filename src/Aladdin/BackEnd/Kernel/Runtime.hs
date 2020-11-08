@@ -2,6 +2,7 @@ module Aladdin.BackEnd.Kernel.Runtime where
 
 import Aladdin.BackEnd.Back
 import Aladdin.BackEnd.Kernel.HOPU
+import Aladdin.BackEnd.Kernel.Solver
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
@@ -65,8 +66,8 @@ showsCurrentState stack1 stacks2 = strcat
     , strstr "--------------------------------" . nl
     ]
 
-runtime :: Controller -> Facts -> Goal -> ExceptT RTErr IO Satisfied
-runtime (Controller get_str put_str answer run_solver) = go where
+execRunTime :: Controller -> Facts -> Goal -> ExceptT RTErr IO Satisfied
+execRunTime (Controller get_str put_str send_ctx run_solver max_dep) = go where
     runBuiltIn :: (BuiltIn, [TermNode]) -> Facts -> Context -> ExceptT String IO (Maybe Context)
     runBuiltIn (built_in, args) facts ctx
         = case built_in of
@@ -83,8 +84,8 @@ runtime (Controller get_str put_str answer run_solver) = go where
             BI_check
                 | [arg1] <- args -> case unfoldlNApp (rewrite HNF arg1) of
                     (NCon predicate, args)
-                        | Atom { _ID = CI_Named str } <- predicate -> liftIO (run_solver facts (ctx { _Lefts = Statement predicate args : _Lefts ctx }))
-                        | Atom { _ID = CI_Unique uni } <- predicate -> liftIO (run_solver facts (ctx { _Lefts = Statement predicate args : _Lefts ctx }))
+                        | Atom { _ID = CI_Named str } <- predicate -> run_solver facts (ctx { _Lefts = Statement predicate args : _Lefts ctx })
+                        | Atom { _ID = CI_Unique uni } <- predicate -> run_solver facts (ctx { _Lefts = Statement predicate args : _Lefts ctx })
                     bad_input -> throwE ("Bad input is given to `BI_check\'.")
                 | otherwise -> throwE ("The number of arguments of `BI_check\' must be 1.")
             BI_assert
@@ -109,7 +110,7 @@ runtime (Controller get_str put_str answer run_solver) = go where
         liftIO get_str
         case probes of
             [] -> do
-                more <- liftIO (answer ctx)
+                more <- liftIO (send_ctx ctx)
                 if more then transition stack stacks else return True
             Probe scope facts goal : probes -> case unfoldlNApp (zonk goal) of
                 (NCon (Atom { _ID = CI_Lambda }), args) -> raise (defaultRTErr { _ErrorCause = "`CI_Lambda\' cannot be head of goal." })
@@ -193,7 +194,7 @@ runtime (Controller get_str put_str answer run_solver) = go where
                                 | predicate == predicate' && length args == length args' -> do
                                     let constraints = [ Disagreement (lhs :=?=: rhs) | (lhs, rhs) <- zip args args' ] ++ _Lefts ctx
                                         constraints_are_zonkes = True
-                                    output <- liftIO (run_solver facts (ctx { _Lefts = constraints, _Label = labeling }))
+                                    output <- catchE (runSolver JustEquations facts (ctx { _Lefts = constraints, _Label = labeling })) $ \error_cause-> throwE (defaultRTErr { _ErrorCause = error_cause })
                                     case output of
                                         Nothing -> failure
                                         Just ctx' -> success (ctx', Probe scope facts premise : probes)
