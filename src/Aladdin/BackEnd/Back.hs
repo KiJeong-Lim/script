@@ -12,6 +12,8 @@ import qualified Data.Set as Set
 import Data.Unique
 import Lib.Base
 
+infix 8 :=?=:
+
 type DeBruijn = Int
 
 type LogicVar = Atom VI
@@ -140,15 +142,13 @@ data Controller
         { _GetStr :: IO (Maybe String)
         , _PutStr :: String -> IO ()
         , _Answer :: Context -> IO Satisfied
-        , _Run_BI :: (BuiltIn, [TermNode]) -> Context -> Facts -> IO Context
-        , _Solver :: [Contstraint] -> Labeling -> IO (Maybe (HopuEnv, [Contstraint]))
+        , _Solver :: Context -> IO (Maybe Context)
         }
     deriving ()
 
 data Context
     = Context
-        { _Scope :: ScopeLevel
-        , _Subst :: VarBinding
+        { _Subst :: VarBinding
         , _Label :: Labeling
         , _Lefts :: [Contstraint]
         }
@@ -607,7 +607,7 @@ showTerm = fst . runIdentity . uncurry (runStateT . format . erase) . runIdentit
     isTy (ShowTVar _) = True
     isTy (ShowTCon _) = True
     isTy (ShowTApp _ _) = True
-    isTy (ShowOper _ "->" _) = True
+    isTy (ShowOper _ "__arrow" _) = True
     isTy _ = False
     make :: [Int] -> TermNode -> StateT Int Identity ShowNode
     make vs (NAbs t) = do
