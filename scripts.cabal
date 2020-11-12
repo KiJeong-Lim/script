@@ -26,12 +26,13 @@ executable aladdin
     default-language: Haskell2010
     build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, pretty-terminal >= 0.1.0.0
     other-modules:
-        Aladdin.BackEnd.Kernel.BuiltIn
-        Aladdin.BackEnd.Kernel.HOPU
-        Aladdin.BackEnd.Kernel.KernelTest
-        Aladdin.BackEnd.Kernel.Runtime
-        Aladdin.BackEnd.Kernel.Solver
-        Aladdin.BackEnd.Back
+        Aladdin.Back.Base.Constant
+        Aladdin.Back.Base.Identifier
+        Aladdin.Back.Base.ReadTerm
+        Aladdin.Back.Base.ShowTerm
+        Aladdin.Back.Base.TermNode
+        Aladdin.Back.Base.UniqueSymbol
+        Aladdin.Back.BackEnd
         Aladdin.Main
 
 executable jasmine

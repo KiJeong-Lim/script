@@ -3,6 +3,8 @@ module Lib.Base where
 import Control.Applicative
 import Control.Monad
 
+type Precedence = Int
+
 type Indentation = Int
 
 newtype PM output
@@ -42,6 +44,19 @@ instance Semigroup (PM a) where
 
 instance Monoid (PM a) where
     mempty = empty
+
+autoPM :: Read a => Precedence -> PM a
+autoPM = PM . readsPrec
+
+acceptCharIf :: (Char -> Bool) -> PM Char
+acceptCharIf condition = PM go where
+    go :: String -> [(Char, String)]
+    go (ch : str)
+        | condition ch = return (ch, str)
+    go _ = []
+
+matchPrefix :: String -> PM ()
+matchPrefix prefix = PM $ \str -> let n = length prefix in if take n str == prefix then return ((), drop n str) else []
 
 strstr :: String -> String -> String
 strstr str1 str2 = str1 ++ str2
