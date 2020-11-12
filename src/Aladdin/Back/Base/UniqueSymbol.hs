@@ -1,5 +1,6 @@
 module Aladdin.Back.Base.UniqueSymbol where
 
+import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
@@ -25,6 +26,9 @@ instance Monad m => Applicative (EnvUS m) where
 
 instance Monad m => Monad (EnvUS m) where
     f1 >>= f2 = EnvUS (unEnvUS f1 >>= unEnvUS . f2)
+
+instance MonadIO m => MonadIO (EnvUS m) where
+    lift = EnvUS . lift . unEnvUS
 
 instance Monad m => MonadUS (EnvUS m) where
     genNewUniqueSymbol = EnvUS go where

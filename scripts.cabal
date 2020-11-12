@@ -32,6 +32,7 @@ executable aladdin
         Aladdin.Back.Base.ShowTerm
         Aladdin.Back.Base.TermNode
         Aladdin.Back.Base.UniqueSymbol
+        Aladdin.Back.Kernel.Runtime
         Aladdin.Back.BackEnd
         Aladdin.Main
 
