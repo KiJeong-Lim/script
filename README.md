@@ -2,6 +2,145 @@
 
 # Aladdin
 
+## syntax
+
+```
+Term ::=
+    | LVar LogicVar
+    | DCon Constant
+    | IApp Term Term
+    | IAbs (Term -> Term)
+    ;
+
+Atom ::=
+    | LVar LogicVar
+    | DCon Constant
+    | IApp Atom Term
+    ;
+
+AtomR ::=
+    | DCon Constant
+    | IApp AtomR Term
+    ;
+
+Goal ::=
+    | GTrue
+    | GFail
+    | GCut
+    | GAnd Goal Goal
+    | GOr Goal Goal
+    | GImply Fact Goal
+    | GSigma (Term -> Goal)
+    | GPi (Term -> Goal)
+    | GEqn Term Term
+    | GAtom Atom
+    | GAssert AtomR
+    ;
+
+Fact ::=
+    | FAtom AtomR
+    | FPi (Term -> Fact)
+    | FIf Fact Goal
+    ;
+
+coerce : Atom -> Term;
+coerce (LVar var) := LVar var;
+coerce (DCon con) := DCon con;
+coerce (IApp atom_1 term_2) := IApp (coerce atom_1) term_2;
+
+coerce : AtomR -> Term;
+coerce (DCon con) := DCon con;
+coerce (IApp rigid_atom_1 term_2) := IApp (coerce rigid_atom_1) term_2;
+
+coerce : Goal -> Term;
+coerce (GTrue) := DCon "__g_true";
+coerce (GFail) := DCon "__g_fail";
+coerce (GCut) := DCon "__g_cut";
+coerce (GAnd goal_1 goal_2) = IApp (IApp (DCon "__g_and" (coerce goal_1)) (coerce goal_2));
+coerce (GOr goal_1 goal_2) = IApp (IApp (DCon "__g_or" (coerce goal1_)) (coerce goal_2));
+coerce (GImply fact_1 goal_2) = IApp (IApp (DCon "__g_imply" (coerce fact_1)) (coerce goal_2));
+coerce (GSigma goal_1) = IApp (DCon "__g_sigma") (IAbs (coerce . goal_1));
+coerce (GPi goal_1) = IApp (DCon "__g_pi") (IAbs (coerce . goal_1));
+coerce (GEqn term_1 term_2) = IApp (IApp (DCon "__g_eqn") (coerce term_1)) (coerce term_2);
+coerce (GAtom atom) := coerce atom;
+
+coerce : Fact -> Term;
+coerce (FAtom rigid_atom) := coerce rigid_atom;
+coerce (FPi fact_1) := IApp (DCon "__f_pi") (IAbs (coerce . fact_1));
+coerce (FIf fact_1 goal_2) := IApp (IApp (DCon "__f_if") (coerce fact_1)) (coerce goal_2);
+```
+
+## semantics
+
+```
+env |- ([(Context mempty theEmptyLabeling [], [Cell program 0 query])], []) ~> ((Context theta _ []), []) : _, _)
+----------------------------------------------------------------------------------------------------------------- Main
+env |- program ?- query ~~> putStrLn ("Yes, the answer substitution is:" ++ show theta)
+
+---------------------------------------------- Supply
+env |- ([], stack : stacks) ~> (stack, stacks)
+
+env |- ((ctx, cells) : stack, stacks) ~> (stack', stacks')
+----------------------------------------------------------------------------------- True
+env |- ((ctx, Cell facts level GTrue : cells) : stack, stacks) ~> (stack', stacks')
+
+env |- (stack, stacks) ~> (stack', stacks')
+----------------------------------------------------------------------------------- Fail
+env |- ((ctx, Cell facts level GFail : cells) : stack, stacks) ~> (stack', stacks')
+
+env |- ([(ctx, cells)], []) ~> (stack', stacks')
+---------------------------------------------------------------------------------- Cut
+env |- ((ctx, Cell facts level Gcut : cells) : stack, stacks) ~> (stack', stacks')
+
+env |- ((ctx, Cell facts level goal_1 : Cell facts level goal_2 : cells) : stack, stacks) ~> (stack', stacks')
+-------------------------------------------------------------------------------------------------------------- And
+env |- ((ctx, Cell facts level (GAnd goal_1 goal_2) : cells) : stack, stacks) ~> (stack', stacks')
+
+env |- ((ctx, Cell facts level goal_1 : cells) : (ctx, Cell facts level goal_2 : cells) : stack, stacks) ~> (stack', stacks')
+----------------------------------------------------------------------------------------------------------------------------- Or
+env |- ((ctx, Cell facts level (GOr goal_1 goal_2) : cells) : stack, stacks) ~> (stack', stacks')
+
+env |- ((ctx, Cell (fact_1 : facts) level goal_2 : cells) : stack, stacks) ~> (stack', stacks')
+---------------------------------------------------------------------------------------------------- Imply
+env |- ((ctx, Cell facts level (GImply fact_1 goal_2) : cells) : stack, stacks) ~> (stack', stacks')
+
+env ~~[ uni <- getNewUnique ]~> env'
+lens (labeling ~~[ enrollLVar (LVar uni) level ]~> labeling') : ctx +-> ctx'
+env' |- ((ctx', Cell facts level (goal_1 (LVar uni) : cells)) : stack, stacks) ~> (stack', stacks')
+--------------------------------------------------------------------------------------------------- Sigma
+env |- ((ctx, Cell facts level (GSigma goal_1) : cells) : stack, stacks) ~> (stack', stacks')
+
+env ~~[ uni <- getNewUnique ]~> env'
+lens (labeling ~~[ enrollLVar (NCon uni) (level + 1) ]~> labeling') : ctx +-> ctx'
+env' |- ((ctx', Cell facts (level + 1) (goal_1 (NCon uni)) : cells) : stack, stacks) ~> (stack', stacks')
+--------------------------------------------------------------------------------------------------------- Pi
+env |- ((ctx, Cell facts level (GPi goal_1) : cells) : stack, stacks) ~> (stack', stacks')
+
+new_stack :=
+    [ (Context (new_theta <> theta) new_labeling new_constraints, applyVarBinding new_theta (Cell facts level goal : cells))
+    | FAtom fact <- facts
+    , (labeling, env) ~~[ (foldl NApp (NCon p') args', goal) <- instantiateFact fact ]~> (labeling', env')
+    , p == p'
+    , length args == length args'
+    , env' |- ([ Disagreement (lhs :=?=: rhs) | (lhs, rhs) <- zip args args' ]) ++ constraints ~~[ solve facts labeling' ]~> solutions
+    , (Solution new_theta new_labeling, new_constraints) <- solutions
+    ]
+------------------------------------------------------------------------------------------------------------------------------------------------------- Atom
+env |- ((Context theta labeling constraints, Cell facts level (GAtom (foldl NApp (NCon p) args) : cells)) : stack, stacks) ~> (new_stack, stack : stacks)
+
+new_stack :=
+    [ (Context (new_theta <> theta) new_labeling new_constraints, applyVarBinding new_theta (Cell facts level goal : cells))
+    | env' |- Disagreement (lhs :=?=: rhs) : constraints ~~[ solve facts labeling' ]~> solutions
+    , (Solution new_theta new_labeling, new_constraints) <- solutions
+    ]
+------------------------------------------------------------------------------------------------------------------------------------ Eqn
+env |- ((Context theta labeling constraints, Cell facts level (GEqn lhs rhs : cells)) : stack, stacks) ~> (new_stack ++ stack, stacks)
+
+env |- ((Context theta labeling (constraint : constraints), cells) : stack, stacks) ~> (stack', stacks')
+--------------------------------------------------------------------------------------------------------------------------------- Assert 
+env |- ((Context theta labeling constraints, Cell facts level (GAssert constraint) : cells) : stack, stacks) ~> (stack', stacks')
+```
+
 # Jasmine
 
 # Abu
