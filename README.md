@@ -72,13 +72,12 @@ coerce (FIf fact_1 goal_2) := IApp (IApp (DCon "__f_if") (coerce fact_1)) (coerc
 
 ## semantics
 
-```
-env |- ([(Context mempty theEmptyLabeling [], [Cell program 0 query])], []) ~> ((Context theta _ []), []) : _, _)
------------------------------------------------------------------------------------------------------------------ Main
-env |- program ?- query ~~> putStrLn ("Yes, the answer substitution is:" ++ show theta)
+- transition:
 
----------------------------------------------- Supply
-env |- ([], stack : stacks) ~> (stack, stacks)
+```
+env |- (stack, stacks) ~> (stack', stacks')
+------------------------------------------------ Supply
+env |- ([], stack : stacks) ~> (stack', stacks')
 
 env |- ((ctx, cells) : stack, stacks) ~> (stack', stacks')
 ----------------------------------------------------------------------------------- True
@@ -117,28 +116,55 @@ env' |- ((ctx', Cell facts (level + 1) (goal_1 (NCon uni)) : cells) : stack, sta
 env |- ((ctx, Cell facts level (GPi goal_1) : cells) : stack, stacks) ~> (stack', stacks')
 
 new_stack :=
-    [ (Context (new_theta <> theta) new_labeling new_constraints, applyVarBinding new_theta (Cell facts level goal : cells))
-    | FAtom fact <- facts
-    , (labeling, env) ~~[ (foldl NApp (NCon p') args', goal) <- instantiateFact fact ]~> (labeling', env')
-    , p == p'
+    [ (Context (new_theta <> theta) new_labeling new_constraints, applyVarBinding new_theta (Cell facts level new_goal : cells))
+    | (i, FAtom fact) <- zip [0, 1 .. length facts - 1] facts
+    , (labeling, env_i) ~~[ (atom', new_goal) <- instantiateFact fact ]~> (labeling', env_(i + 1))
+    , foldl IApp (DCon predicate) args = atom
+    , foldl IApp (DCon predicate') args' = atom'
+    , predicate == predicate'
     , length args == length args'
-    , env' |- ([ Disagreement (lhs :=?=: rhs) | (lhs, rhs) <- zip args args' ]) ++ constraints ~~[ solve facts labeling' ]~> solutions
-    , (Solution new_theta new_labeling, new_constraints) <- solutions
-    ]
-------------------------------------------------------------------------------------------------------------------------------------------------------- Atom
-env |- ((Context theta labeling constraints, Cell facts level (GAtom (foldl NApp (NCon p) args) : cells)) : stack, stacks) ~> (new_stack, stack : stacks)
+    , env_(i + 1) |- ([ Disagreement (lhs :=?=: rhs) | (lhs, rhs) <- zip args args' ]) ++ constraints ~~[ solve facts labeling' ]~> solutions
+    , (Solution new_theta new_labeling, new_constraints) <- solutions                                                                        
+    ]                                                                                                                                        
+env_(length facts) |- (new_stack, stack : stacks) ~> (stack', stacks')                                                                       
+--------------------------------------------------------------------------------------------------------------------------------------------- Atom
+env_0 |- ((Context theta labeling constraints, Cell facts level (GAtom atom : cells)) : stack, stacks) ~> (stack', stacks')
 
 new_stack :=
     [ (Context (new_theta <> theta) new_labeling new_constraints, applyVarBinding new_theta (Cell facts level goal : cells))
-    | env' |- Disagreement (lhs :=?=: rhs) : constraints ~~[ solve facts labeling' ]~> solutions
+    | env |- Disagreement (lhs :=?=: rhs) : constraints ~~[ solve facts labeling' ]~> solutions
     , (Solution new_theta new_labeling, new_constraints) <- solutions
     ]
------------------------------------------------------------------------------------------------------------------------------------- Eqn
-env |- ((Context theta labeling constraints, Cell facts level (GEqn lhs rhs : cells)) : stack, stacks) ~> (new_stack ++ stack, stacks)
+env |- (new_stack ++ stack, stacks) ~> (stack', stacks')
+--------------------------------------------------------------------------------------------------------------------------- Eqn
+env |- ((Context theta labeling constraints, Cell facts level (GEqn lhs rhs : cells)) : stack, stacks) ~> (stack', stacks')
 
 env |- ((Context theta labeling (constraint : constraints), cells) : stack, stacks) ~> (stack', stacks')
 --------------------------------------------------------------------------------------------------------------------------------- Assert 
 env |- ((Context theta labeling constraints, Cell facts level (GAssert constraint) : cells) : stack, stacks) ~> (stack', stacks')
+
+----------------------------------------------------------------- Fin1
+env |- ((ctx, []) : stack, stacks) ~> ((ctx, []) : stack, stacks)
+
+--------------------------- Fin2
+env |- ([], []) ~> ([], [])
+```
+
+- response:
+
+```
+env |- ([(Context mempty theEmptyLabeling [], [Cell program 0 query])], []) ~> (Context theta labeling []) []) : stack, stacks)
+------------------------------------------------------------------------------------------------------------------------------- Yes
+env |- program ?- query ~~> "Yes, the answer substitution is: " ++ showsPrec 0 theta "\n"
+
+env |- ([(Context mempty theEmptyLabeling [], [Cell program 0 query])], []) ~> ([], [])
+--------------------------------------------------------------------------------------- No
+env |- program ?- query ~~> "No"
+
+env |- ([(Context mempty theEmptyLabeling [], [Cell program 0 query])], []) ~> (Context theta labeling constraints, []) : stack, stacks)
+not (null constraints)
+-------------------------------------------------------------------------------------------------------------------------------------------------------------- Partial
+env |- program ?- query ~~> "Yes, the answer substitution is: " ++ showsPrec 0 theta ("\nbut the remaining constraints are: " ++ showsPrec 0 constraints "\n")
 ```
 
 # Jasmine
