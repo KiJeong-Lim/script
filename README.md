@@ -2,7 +2,25 @@
 
 # Aladdin
 
-## syntax
+- The followings are discriptioins of grammar and abstract model. See more details in ``src/Aladdin/Aladdin.md``.
+
+## Grammar
+
+### Lexing
+
+```
+
+```
+
+### Parsing
+
+```
+
+```
+
+## Abstract Model
+
+### Syntax
 
 ```
 Term ::=
@@ -70,7 +88,7 @@ coerce (FPi fact_1) := IApp (DCon "__f_pi") (IAbs (coerce . fact_1));
 coerce (FIf fact_1 goal_2) := IApp (IApp (DCon "__f_if") (coerce fact_1)) (coerce goal_2);
 ```
 
-## semantics
+### Semantics
 
 - transition:
 
