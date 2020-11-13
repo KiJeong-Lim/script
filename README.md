@@ -75,45 +75,45 @@ coerce (FIf fact_1 goal_2) := IApp (IApp (DCon "__f_if") (coerce fact_1)) (coerc
 - transition:
 
 ```
-env |- (stack, stacks) ~> (stack', stacks')
------------------------------------------------- Supply
-env |- ([], stack : stacks) ~> (stack', stacks')
+env |- (stack, stacks) ~~[ transition ]~> (stack', stacks')
+---------------------------------------------------------------- Supply
+env |- ([], stack : stacks) ~~[ transition ]~> (stack', stacks')
 
-env |- ((ctx, cells) : stack, stacks) ~> (stack', stacks')
------------------------------------------------------------------------------------ True
-env |- ((ctx, Cell facts level GTrue : cells) : stack, stacks) ~> (stack', stacks')
+env |- ((ctx, cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
+--------------------------------------------------------------------------------------------------- True
+env |- ((ctx, Cell facts level GTrue : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
 
-env |- (stack, stacks) ~> (stack', stacks')
------------------------------------------------------------------------------------ Fail
-env |- ((ctx, Cell facts level GFail : cells) : stack, stacks) ~> (stack', stacks')
+env |- (stack, stacks) ~~[ transition ]~> (stack', stacks')
+--------------------------------------------------------------------------------------------------- Fail
+env |- ((ctx, Cell facts level GFail : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
 
-env |- ([(ctx, cells)], []) ~> (stack', stacks')
----------------------------------------------------------------------------------- Cut
-env |- ((ctx, Cell facts level Gcut : cells) : stack, stacks) ~> (stack', stacks')
+env |- ([(ctx, cells)], []) ~~[ transition ]~> (stack', stacks')
+-------------------------------------------------------------------------------------------------- Cut
+env |- ((ctx, Cell facts level Gcut : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
 
-env |- ((ctx, Cell facts level goal_1 : Cell facts level goal_2 : cells) : stack, stacks) ~> (stack', stacks')
--------------------------------------------------------------------------------------------------------------- And
-env |- ((ctx, Cell facts level (GAnd goal_1 goal_2) : cells) : stack, stacks) ~> (stack', stacks')
+env |- ((ctx, Cell facts level goal_1 : Cell facts level goal_2 : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
+------------------------------------------------------------------------------------------------------------------------------ And
+env |- ((ctx, Cell facts level (GAnd goal_1 goal_2) : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
 
-env |- ((ctx, Cell facts level goal_1 : cells) : (ctx, Cell facts level goal_2 : cells) : stack, stacks) ~> (stack', stacks')
------------------------------------------------------------------------------------------------------------------------------ Or
-env |- ((ctx, Cell facts level (GOr goal_1 goal_2) : cells) : stack, stacks) ~> (stack', stacks')
+env |- ((ctx, Cell facts level goal_1 : cells) : (ctx, Cell facts level goal_2 : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
+--------------------------------------------------------------------------------------------------------------------------------------------- Or
+env |- ((ctx, Cell facts level (GOr goal_1 goal_2) : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
 
-env |- ((ctx, Cell (fact_1 : facts) level goal_2 : cells) : stack, stacks) ~> (stack', stacks')
----------------------------------------------------------------------------------------------------- Imply
-env |- ((ctx, Cell facts level (GImply fact_1 goal_2) : cells) : stack, stacks) ~> (stack', stacks')
-
-env ~~[ uni <- getNewUnique ]~> env'
-lens (labeling ~~[ enrollLVar (LVar uni) level ]~> labeling') : ctx +-> ctx'
-env' |- ((ctx', Cell facts level (goal_1 (LVar uni) : cells)) : stack, stacks) ~> (stack', stacks')
---------------------------------------------------------------------------------------------------- Sigma
-env |- ((ctx, Cell facts level (GSigma goal_1) : cells) : stack, stacks) ~> (stack', stacks')
+env |- ((ctx, Cell (fact_1 : facts) level goal_2 : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
+-------------------------------------------------------------------------------------------------------------------- Imply
+env |- ((ctx, Cell facts level (GImply fact_1 goal_2) : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
 
 env ~~[ uni <- getNewUnique ]~> env'
-lens (labeling ~~[ enrollLVar (NCon uni) (level + 1) ]~> labeling') : ctx +-> ctx'
-env' |- ((ctx', Cell facts (level + 1) (goal_1 (NCon uni)) : cells) : stack, stacks) ~> (stack', stacks')
---------------------------------------------------------------------------------------------------------- Pi
-env |- ((ctx, Cell facts level (GPi goal_1) : cells) : stack, stacks) ~> (stack', stacks')
+lens (labeling ~~[ enrollLVar (LVar uni) level ]~> labeling') = ctx +-> ctx'
+env' |- ((ctx', Cell facts level (goal_1 (LVar uni) : cells)) : stack, stacks) ~~[ transition ]~> (stack', stacks')
+------------------------------------------------------------------------------------------------------------------- Sigma
+env |- ((ctx, Cell facts level (GSigma goal_1) : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
+
+env ~~[ uni <- getNewUnique ]~> env'
+lens (labeling ~~[ enrollLVar (NCon uni) (level + 1) ]~> labeling') = ctx +-> ctx'
+env' |- ((ctx', Cell facts (level + 1) (goal_1 (NCon uni)) : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
+------------------------------------------------------------------------------------------------------------------------- Pi
+env |- ((ctx, Cell facts level (GPi goal_1) : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
 
 new_stack :=
     [ (Context (new_theta <> theta) new_labeling new_constraints, applyVarBinding new_theta (Cell facts level new_goal : cells))
@@ -124,44 +124,44 @@ new_stack :=
     , predicate == predicate'
     , length args == length args'
     , env_(i + 1) |- ([ Disagreement (lhs :=?=: rhs) | (lhs, rhs) <- zip args args' ]) ++ constraints ~~[ solve facts labeling' ]~> solutions
-    , (Solution new_theta new_labeling, new_constraints) <- solutions                                                                        
-    ]                                                                                                                                        
-env_(length facts) |- (new_stack, stack : stacks) ~> (stack', stacks')                                                                       
+    , (Solution new_theta new_labeling, new_constraints) <- solutions
+    ]
+env_(length facts) |- (new_stack, stack : stacks) ~~[ transition ]~> (stack', stacks')
 --------------------------------------------------------------------------------------------------------------------------------------------- Atom
-env_0 |- ((Context theta labeling constraints, Cell facts level (GAtom atom : cells)) : stack, stacks) ~> (stack', stacks')
+env_0 |- ((Context theta labeling constraints, Cell facts level (GAtom atom : cells)) : stack, stacks) ~~[ transition ]~> (stack', stacks')
 
 new_stack :=
     [ (Context (new_theta <> theta) new_labeling new_constraints, applyVarBinding new_theta (Cell facts level goal : cells))
     | env |- Disagreement (lhs :=?=: rhs) : constraints ~~[ solve facts labeling' ]~> solutions
     , (Solution new_theta new_labeling, new_constraints) <- solutions
     ]
-env |- (new_stack ++ stack, stacks) ~> (stack', stacks')
---------------------------------------------------------------------------------------------------------------------------- Eqn
-env |- ((Context theta labeling constraints, Cell facts level (GEqn lhs rhs : cells)) : stack, stacks) ~> (stack', stacks')
+env |- (new_stack ++ stack, stacks) ~~[ transition ]~> (stack', stacks')
+------------------------------------------------------------------------------------------------------------------------------------------- Eqn
+env |- ((Context theta labeling constraints, Cell facts level (GEqn lhs rhs : cells)) : stack, stacks) ~~[ transition ]~> (stack', stacks')
 
-env |- ((Context theta labeling (constraint : constraints), cells) : stack, stacks) ~> (stack', stacks')
---------------------------------------------------------------------------------------------------------------------------------- Assert 
-env |- ((Context theta labeling constraints, Cell facts level (GAssert constraint) : cells) : stack, stacks) ~> (stack', stacks')
+env |- ((Context theta labeling (constraint : constraints), cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
+------------------------------------------------------------------------------------------------------------------------------------------------- Assert 
+env |- ((Context theta labeling constraints, Cell facts level (GAssert constraint) : cells) : stack, stacks) ~~[ transition ]~> (stack', stacks')
 
------------------------------------------------------------------ Fin1
-env |- ((ctx, []) : stack, stacks) ~> ((ctx, []) : stack, stacks)
+------------------------------------------------------------------------------- Fin1
+env |- ((ctx, []) : stack, stacks) ~~[ transition ]~> ((ctx, []) : stack, stacks)
 
---------------------------- Fin2
-env |- ([], []) ~> ([], [])
+----------------------------------------- Fin2
+env |- ([], []) ~~[ transition ]~> ([], [])
 ```
 
 - response:
 
 ```
-env |- ([(Context mempty theEmptyLabeling [], [Cell program 0 query])], []) ~> (Context theta labeling []) []) : stack, stacks)
-------------------------------------------------------------------------------------------------------------------------------- Yes
+env |- ([(Context mempty theEmptyLabeling [], [Cell program 0 query])], []) ~~[transition]~> (Context theta labeling []) []) : stack, stacks)
+--------------------------------------------------------------------------------------------------------------------------------------------- Yes
 env |- program ?- query ~~> "Yes, the answer substitution is: " ++ showsPrec 0 theta "\n"
 
-env |- ([(Context mempty theEmptyLabeling [], [Cell program 0 query])], []) ~> ([], [])
---------------------------------------------------------------------------------------- No
+env |- ([(Context mempty theEmptyLabeling [], [Cell program 0 query])], []) ~~[transition]~> ([], [])
+----------------------------------------------------------------------------------------------------- No
 env |- program ?- query ~~> "No"
 
-env |- ([(Context mempty theEmptyLabeling [], [Cell program 0 query])], []) ~> (Context theta labeling constraints, []) : stack, stacks)
+env |- ([(Context mempty theEmptyLabeling [], [Cell program 0 query])], []) ~~[transition]~> (Context theta labeling constraints, []) : stack, stacks)
 not (null constraints)
 -------------------------------------------------------------------------------------------------------------------------------------------------------------- Partial
 env |- program ?- query ~~> "Yes, the answer substitution is: " ++ showsPrec 0 theta ("\nbut the remaining constraints are: " ++ showsPrec 0 constraints "\n")
@@ -197,7 +197,7 @@ env |- program ?- query ~~> "Yes, the answer substitution is: " ++ showsPrec 0 t
     SOFTWARE.
 ```
 
-``base``:
+- ``base``:
 
 ```
     This library (libraries/base) is derived from code from several
@@ -285,7 +285,7 @@ env |- program ?- query ~~> "Yes, the answer substitution is: " ++ showsPrec 0 t
     -----------------------------------------------------------------------------
 ```
 
-``containers``:
+- ``containers``:
 
 ```
     The Glasgow Haskell Compiler License
@@ -321,7 +321,7 @@ env |- program ?- query ~~> "Yes, the answer substitution is: " ++ showsPrec 0 t
     DAMAGE.
 ```
 
-``transformers``:
+- ``transformers``:
 
 ```
     The Glasgow Haskell Compiler License
@@ -357,7 +357,7 @@ env |- program ?- query ~~> "Yes, the answer substitution is: " ++ showsPrec 0 t
     DAMAGE.
 ```
 
-``QuickCheck``:
+- ``QuickCheck``:
 
 ```
     (The following is the 3-clause BSD license.)
@@ -391,7 +391,7 @@ env |- program ?- query ~~> "Yes, the answer substitution is: " ++ showsPrec 0 t
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-``checkers``:
+- ``checkers``:
 
 ```
     Copyright (c) 2009 Conal Elliott
@@ -420,7 +420,7 @@ env |- program ?- query ~~> "Yes, the answer substitution is: " ++ showsPrec 0 t
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-``pretty-terminal``:
+- ``pretty-terminal``:
 
 ```
     Copyright Logan McPhail (c) 2018
