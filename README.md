@@ -32,7 +32,7 @@
     SOFTWARE.
 ```
 
-``base``:
+- ``base``:
 
 ```
     This library (libraries/base) is derived from code from several
@@ -120,7 +120,7 @@
     -----------------------------------------------------------------------------
 ```
 
-``containers``:
+- ``containers``:
 
 ```
     The Glasgow Haskell Compiler License
@@ -156,7 +156,7 @@
     DAMAGE.
 ```
 
-``transformers``:
+- ``transformers``:
 
 ```
     The Glasgow Haskell Compiler License
@@ -192,7 +192,7 @@
     DAMAGE.
 ```
 
-``QuickCheck``:
+- ``QuickCheck``:
 
 ```
     (The following is the 3-clause BSD license.)
@@ -226,7 +226,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-``checkers``:
+- ``checkers``:
 
 ```
     Copyright (c) 2009 Conal Elliott
@@ -255,7 +255,7 @@
     THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-``pretty-terminal``:
+- ``pretty-terminal``:
 
 ```
     Copyright Logan McPhail (c) 2018
