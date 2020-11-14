@@ -1,27 +1,6 @@
-# Implementation
+module Aladdin.Back.Base.TermNode.Util where
 
-## Front
-
-## Back
-
-- TermNode:
-
-```haskell
-type SuspEnv = [SuspItem]
-
-data TermNode
-    = LVar LogicVar
-    | NCon Constant
-    | NIdx DeBruijn
-    | NApp TermNode TermNode
-    | NAbs TermNode
-    | Susp Int Int SuspEnv
-    deriving (Eq, Ord)
-
-data SuspItem
-    = Binds TermNode Int
-    | Dummy Int
-    deriving (Eq, Ord)
+import Aladdin.Back.Base.TermNode
 
 data ReduceOption
     = WHNF
@@ -29,7 +8,7 @@ data ReduceOption
     | NF
     deriving (Eq)
 
-rewriteWithSusp :: TermNode -> Int -> Int -> SuspEnv -> ReductionOption -> TermNode
+rewriteWithSusp :: TermNode -> Int -> Int -> SuspEnv -> ReduceOption -> TermNode
 rewriteWithSusp (LVar v) ol nl env option
     = mkLVar v
 rewriteWithSusp (NCon c) ol nl env option
@@ -61,6 +40,17 @@ rewriteWithSusp (Susp t ol nl env) ol' nl' env' option
             | otherwise -> mkNAbs (rewriteWithSusp t' (ol' + 1) (nl' + 1) (mkDummy nl' : env') option)
         t' -> rewriteWithSusp t' ol' nl' env' option
 
-rewrite :: ReductionOption -> TermNode -> TermNode
+rewrite :: ReduceOption -> TermNode -> TermNode
 rewrite option t = rewriteWithSusp t 0 0 [] option
-```
+
+unfoldlNApp :: TermNode -> (TermNode, [TermNode])
+unfoldlNApp = flip go [] where
+    go :: TermNode -> [TermNode] -> (TermNode, [TermNode])
+    go (NApp t1 t2) ts = go t1 (t2 : ts)
+    go t ts = (t, ts)
+
+lensForSusp :: (TermNode -> TermNode) -> SuspEnv -> SuspEnv
+lensForSusp delta = map go where
+    go :: SuspItem -> SuspItem
+    go (Dummy l) = mkDummy l
+    go (Binds t l) = mkBinds (delta t) l
