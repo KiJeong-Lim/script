@@ -1,4 +1,4 @@
-module Aladdin.Back.Kernel.Solver.FactInstantiation where
+module Aladdin.Back.Kernel.Runtime.Instantiation where
 
 import Aladdin.Back.Base.Constant
 import Aladdin.Back.Base.Labeling
@@ -28,5 +28,4 @@ instantiateFact fact level
             instantiateFact (mkNApp fact1 (mkLVar var)) level
         (NCon (LO LO_if), [conclusion, premise]) -> return (conclusion, premise)
         (NCon (LO logical_operator), args) -> lift (throwE (BadFactGiven (foldlNApp (mkNCon (LO logical_operator)) args)))
-        (NCon pred, args) -> return (foldlNApp (mkNCon pred) args, mkNCon (LO LO_true))
-        (t, ts) -> lift (throwE (BadFactGiven (foldlNApp t ts)))
+        (t, ts) -> return (foldlNApp t ts, mkNCon (LO LO_true))

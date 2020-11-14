@@ -1,4 +1,4 @@
-module Aladdin.Back.Kernel.Solver.Util where
+module Aladdin.Back.Kernel.Reducer.Util where
 
 import Aladdin.Back.Base.Labeling
 import Aladdin.Back.Base.TermNode
@@ -12,6 +12,5 @@ data Solution
         { _NewLabeling :: Labeling
         , _ResultSubst :: VarBinding
         , _Constraints :: [Constraint]
-        , _FutherGoals :: [TermNode]
         }
     deriving ()

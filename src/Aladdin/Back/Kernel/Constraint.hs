@@ -25,9 +25,3 @@ instance HasLVar Constraint where
     getFreeLVars (Statement pred args) = getFreeLVars args
     applyBinding theta (Disagreement disagreement) = Disagreement (applyBinding theta disagreement)
     applyBinding theta (Statement pred args) = Statement pred (applyBinding theta args)
-
-makeConstraint :: DataConstructor -> [TermNode] -> Maybe Constraint
-makeConstraint (DC_eq) args
-    | [typ, lhs, rhs] <- args = return (Disagreement (lhs :=?=: rhs))
-    | otherwise = Nothing
-makeConstraint pred args = return (Statement pred args)

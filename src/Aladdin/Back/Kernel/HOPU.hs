@@ -16,8 +16,8 @@ import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
 import Data.IORef
 
-runHOPU :: [Disagreement] -> Labeling -> IO (Maybe ([Disagreement], HopuSol))
-runHOPU disagreements labeling = do
+runHOPU :: Labeling -> [Disagreement] -> IO (Maybe ([Disagreement], HopuSol))
+runHOPU labeling disagreements = do
     changed <- newIORef False
     let sol = HopuSol { _SolLabeling = labeling, _SolVBinding = mempty }
         loop disagreements = do
