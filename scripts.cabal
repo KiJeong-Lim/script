@@ -31,6 +31,12 @@ executable aladdin
         Aladdin.Back.Base.TermNode.Util
         Aladdin.Back.Base.Constant
         Aladdin.Back.Base.TermNode
+        Aladdin.Back.Kernel.HOPU.Bind
+        Aladdin.Back.Kernel.HOPU.MkSubst
+        Aladdin.Back.Kernel.HOPU.Simplify
+        Aladdin.Back.Kernel.HOPU.Util
+        Aladdin.Back.Kernel.HOPU
+        Aladdin.Back.Kernel.Runtime
         Aladdin.Main
 
 executable jasmine
