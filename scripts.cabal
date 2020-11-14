@@ -31,6 +31,7 @@ executable aladdin
         Aladdin.Back.Base.TermNode.Util
         Aladdin.Back.Base.Constant
         Aladdin.Back.Base.TermNode
+        Aladdin.Back.Base.Rule
         Aladdin.Back.Kernel.HOPU.Bind
         Aladdin.Back.Kernel.HOPU.MkSubst
         Aladdin.Back.Kernel.HOPU.Select
@@ -39,6 +40,7 @@ executable aladdin
         Aladdin.Back.Kernel.Runtime.LogicalOperator
         Aladdin.Back.Kernel.Runtime.Transition
         Aladdin.Back.Kernel.Runtime.Util
+        Aladdin.Back.Kernel.Solver.FactInstantiation
         Aladdin.Back.Kernel.Solver.Util
         Aladdin.Back.Kernel.Constraint
         Aladdin.Back.Kernel.Disagreement

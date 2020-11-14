@@ -32,6 +32,16 @@ instance Labelable LogicVar where
     updateLabel atom level labeling = labeling { _VarLabel = Map.insert atom level (_VarLabel labeling) }
     lookupLabel atom labeling = maybe 0 id (Map.lookup atom (_VarLabel labeling))
 
+instance ZonkLVar Labeling where
+    zonkLVar theta labeling = labeling { _VarLabel = Map.mapWithKey loop (_VarLabel labeling) } where
+        loop :: LogicVar -> ScopeLevel -> ScopeLevel
+        loop v label = foldr min label
+            [ label'
+            | (v', t') <- Map.toList (unVarBinding theta)
+            , v `Set.member` getFreeLVs t'
+            , label' <- fromMaybeToList (Map.lookup v' (_VarLabel labeling))
+            ]
+
 fromMaybeToList :: Maybe a -> [a]
 fromMaybeToList Nothing = []
 fromMaybeToList (Just x) = [x]

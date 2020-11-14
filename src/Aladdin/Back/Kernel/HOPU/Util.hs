@@ -32,19 +32,8 @@ data HopuFail
     | NotAPattern
     deriving (Eq)
 
-zonkLVar :: VarBinding -> HopuSol -> HopuSol
-zonkLVar theta (HopuSol { _SolLabeling = labeling, _SolVBinding = binding }) = HopuSol { _SolLabeling = labeling', _SolVBinding = binding' } where
-    loop :: LogicVar -> ScopeLevel -> ScopeLevel
-    loop v label = foldr min label
-        [ label'
-        | (v', t') <- Map.toList (unVarBinding binding)
-        , v `Set.member` getFreeLVs t'
-        , label' <- fromMaybeToList (Map.lookup v' (_VarLabel labeling))
-        ]
-    labeling' :: Labeling
-    labeling' = labeling { _VarLabel = Map.mapWithKey loop (_VarLabel labeling) }
-    binding' :: VarBinding
-    binding' = theta <> binding
+instance ZonkLVar HopuSol where
+    zonkLVar theta (HopuSol labeling binding) = HopuSol (zonkLVar theta labeling) (zonkLVar theta binding)
 
 viewNestedNAbs :: TermNode -> (Int, TermNode)
 viewNestedNAbs = go 0 where

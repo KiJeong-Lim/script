@@ -16,6 +16,9 @@ class HasLVar expr where
     getFreeLVars :: expr -> Set.Set LogicVar -> Set.Set LogicVar
     applyBinding :: VarBinding -> expr -> expr
 
+class ZonkLVar expr where
+    zonkLVar :: VarBinding -> expr -> expr
+
 instance HasLVar TermNode where
     getFreeLVars (LVar v) = Set.insert v
     getFreeLVars (NCon c) = id
@@ -50,6 +53,9 @@ instance Monoid VarBinding where
     mempty = map0 `seq` VarBinding map0 where
         map0 :: Map.Map LogicVar TermNode
         map0 = Map.empty
+
+instance ZonkLVar VarBinding where
+    zonkLVar theta2 theta1 = theta2 <> theta1
 
 getFreeLVs :: HasLVar expr => expr -> Set.Set LogicVar
 getFreeLVs = flip getFreeLVars Set.empty

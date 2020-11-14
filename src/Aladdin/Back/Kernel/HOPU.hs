@@ -16,7 +16,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
 import Data.IORef
 
-runHOPU :: [Disagreement] -> Labeling -> IO (Maybe (HopuSol, [Disagreement]))
+runHOPU :: [Disagreement] -> Labeling -> IO (Maybe ([Disagreement], HopuSol))
 runHOPU disagreements labeling = do
     changed <- newIORef False
     let sol = HopuSol { _SolLabeling = labeling, _SolVBinding = mempty }
@@ -31,4 +31,4 @@ runHOPU disagreements labeling = do
     output <- runExceptT (runStateT (loop disagreements) sol)
     case output of
         Left err -> return Nothing
-        Right (disagreements', sol') -> return (Just (sol', disagreements'))
+        Right result -> return (Just result)

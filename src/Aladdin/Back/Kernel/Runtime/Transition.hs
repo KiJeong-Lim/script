@@ -37,7 +37,7 @@ showsCurrentState ctx cells stack = strcat
     , strstr "* The rest of the stack is:" . nl
     , strcat
         [ strcat
-            [ pindent 2 . strstr "- [# " . showsPrec 0 i . strstr "]:" . nl
+            [ pindent 2 . strstr "- #[ " . showsPrec 0 i . strstr "]:" . nl
             , showStackItem 4 item . nl
             ]
         | (i, item) <- zip [1, 2 .. length stack] stack
@@ -73,8 +73,8 @@ runTransition env = flip go where
                             [ mkstrict
                                 ( Context (result_subst <> _TotalVarBinding ctx) new_labeling constraints
                                 , concat
-                                    [ [ Cell (applyBinding result_subst facts) level goal | goal <- futher_goals ]
-                                    , map (applySubstToCell result_subst) cells'
+                                    [ [ Cell (applyBinding result_subst facts) level futher_goal | futher_goal <- futher_goals ]
+                                    , [ Cell (applyBinding result_subst facts') level' (applyBinding result_subst goal') | Cell facts' level' goal' <- cells' ]
                                     ]
                                 )
                             | Solution new_labeling result_subst constraints futher_goals <- solutions

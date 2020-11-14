@@ -41,6 +41,3 @@ data RuntimeEnv
         , _Reduce :: [Fact] -> [Constraint] -> Labeling -> ExceptT KernelErr IO [Solution]
         }
     deriving ()
-
-applySubstToCell :: VarBinding -> Cell -> Cell
-applySubstToCell theta (Cell facts level goal) = Cell (applyBinding theta facts) level (applyBinding theta goal)
