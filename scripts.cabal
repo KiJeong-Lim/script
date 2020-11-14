@@ -38,10 +38,10 @@ executable aladdin
         Aladdin.Back.Kernel.HOPU.Simplify
         Aladdin.Back.Kernel.HOPU.Util
         Aladdin.Back.Kernel.HOPU
-        Aladdin.Back.Kernel.Runtime.Instantiator
+        Aladdin.Back.Kernel.Runtime.Instantiation
         Aladdin.Back.Kernel.Runtime.LogicalOperator
-        Aladdin.Back.Kernel.Runtime.RuntimeError
         Aladdin.Back.Kernel.Runtime.Transition
+        Aladdin.Back.Kernel.Runtime.Util
         Aladdin.Back.Kernel.Runtime
         Aladdin.Main
 
