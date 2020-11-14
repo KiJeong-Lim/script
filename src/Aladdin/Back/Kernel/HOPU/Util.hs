@@ -15,10 +15,6 @@ import qualified Data.Set as Set
 import Data.Unique
 import Lib.Base
 
-data Disagreement
-    = TermNode :=?=: TermNode
-    deriving (Eq)
-
 data HopuSol
     = HopuSol
         { _SolLabeling :: Labeling
@@ -35,15 +31,6 @@ data HopuFail
     | BindFail
     | NotAPattern
     deriving (Eq)
-
-instance Show Disagreement where
-    show = flip (showsPrec 0) ""
-    showList = ppunc "\n" . map (showsPrec 0)
-    showsPrec _ (lhs :=?=: rhs) = showsPrec 0 lhs . strstr " =?= " . showsPrec 0 rhs
-
-instance HasLVar Disagreement where
-    getFreeLVars (lhs :=?=: rhs) = getFreeLVars lhs . getFreeLVars rhs
-    applyBinding theta (lhs :=?=: rhs) = applyBinding theta lhs :=?=: applyBinding theta rhs
 
 zonkLVar :: VarBinding -> HopuSol -> HopuSol
 zonkLVar theta (HopuSol { _SolLabeling = labeling, _SolVBinding = binding }) = HopuSol { _SolLabeling = labeling', _SolVBinding = binding' } where
@@ -70,25 +57,6 @@ makeNestedNAbs n
     | n == 0 = id
     | n > 0 = makeNestedNAbs (n - 1) . NAbs
     | otherwise = undefined
-
-isRigid :: TermNode -> Bool
-isRigid (NCon c) = True
-isRigid (NIdx i) = True
-isRigid _ = False
-
-areAllDistinct :: Eq a => [a] -> Bool
-areAllDistinct [] = True
-areAllDistinct (x : xs) = not (elem x xs) && areAllDistinct xs
-
-isPatternRespectTo :: LogicVar -> [TermNode] -> Labeling -> Bool
-isPatternRespectTo v ts labeling = and
-    [ all isRigid ts
-    , areAllDistinct ts
-    , and
-        [ lookupLabel v labeling < lookupLabel c labeling
-        | NCon c <- ts
-        ]
-    ]
 
 getNewLVar :: MonadIO m => Bool -> ScopeLevel -> StateT HopuSol m TermNode
 getNewLVar isty label = do

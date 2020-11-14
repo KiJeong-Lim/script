@@ -1,10 +1,12 @@
 module Aladdin.Back.Kernel.HOPU.MkSubst where
 
+import Aladdin.Back.Base.Disagreement
 import Aladdin.Back.Base.Labeling
 import Aladdin.Back.Base.TermNode
 import Aladdin.Back.Base.TermNode.Util
 import Aladdin.Back.Base.VarBinding
 import Aladdin.Back.Kernel.HOPU.Bind
+import Aladdin.Back.Kernel.HOPU.Select
 import Aladdin.Back.Kernel.HOPU.Util
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class

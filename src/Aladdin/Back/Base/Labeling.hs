@@ -35,3 +35,9 @@ instance Labelable LogicVar where
 fromMaybeToList :: Maybe a -> [a]
 fromMaybeToList Nothing = []
 fromMaybeToList (Just x) = [x]
+
+theEmptyLabeling :: Labeling
+theEmptyLabeling = Labeling
+    { _ConLabel = Map.empty
+    , _VarLabel = Map.empty
+    }

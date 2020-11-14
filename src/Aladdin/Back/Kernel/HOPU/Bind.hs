@@ -1,9 +1,11 @@
 module Aladdin.Back.Kernel.HOPU.Bind where
 
+import Aladdin.Back.Base.Disagreement
 import Aladdin.Back.Base.Labeling
 import Aladdin.Back.Base.TermNode
 import Aladdin.Back.Base.TermNode.Util
 import Aladdin.Back.Base.VarBinding
+import Aladdin.Back.Kernel.HOPU.Select
 import Aladdin.Back.Kernel.HOPU.Util
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
@@ -13,36 +15,6 @@ import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Data.Unique
-
-down :: Monad m => [TermNode] -> [TermNode] -> StateT HopuSol (ExceptT HopuFail m) [TermNode]
-zs `down` ts = if downable then return indices else lift (throwE DownFail) where
-    downable :: Bool
-    downable = and
-        [ areAllDistinct ts
-        , all isRigid ts
-        , areAllDistinct zs
-        , all isRigid zs
-        ]
-    indices :: [TermNode]
-    indices = map mkNIdx
-        [ length ts - i
-        | z <- zs
-        , i <- fromMaybeToList (z `List.elemIndex` ts)
-        ]
-
-up :: Monad m => [TermNode] -> LogicVar -> StateT HopuSol (ExceptT HopuFail m) [TermNode]
-ts `up` y = if upable then findVisibles . _SolLabeling <$> get else lift (throwE UpFail) where
-    upable :: Bool
-    upable = and
-        [ areAllDistinct ts
-        , all isRigid ts
-        ]
-    findVisibles :: Labeling -> [TermNode]
-    findVisibles labeling = map mkNCon
-        [ c
-        | NCon c <- ts
-        , lookupLabel c labeling <= lookupLabel y labeling
-        ]
 
 bind :: LogicVar -> TermNode -> [TermNode] -> Int -> StateT HopuSol (ExceptT HopuFail IO) TermNode
 bind var = go . rewrite HNF where
