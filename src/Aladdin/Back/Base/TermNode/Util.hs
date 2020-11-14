@@ -1,6 +1,7 @@
 module Aladdin.Back.Base.TermNode.Util where
 
 import Aladdin.Back.Base.TermNode
+import qualified Data.List as List
 
 data ReduceOption
     = WHNF
@@ -54,3 +55,6 @@ lensForSusp delta = map go where
     go :: SuspItem -> SuspItem
     go (Dummy l) = mkDummy l
     go (Binds t l) = mkBinds (delta t) l
+
+foldlNApp :: TermNode -> [TermNode] -> TermNode
+foldlNApp = List.foldl' mkNApp

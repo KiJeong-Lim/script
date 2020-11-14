@@ -1,10 +1,10 @@
 module Aladdin.Back.Kernel.HOPU.Bind where
 
-import Aladdin.Back.Base.Disagreement
 import Aladdin.Back.Base.Labeling
 import Aladdin.Back.Base.TermNode
 import Aladdin.Back.Base.TermNode.Util
 import Aladdin.Back.Base.VarBinding
+import Aladdin.Back.Kernel.Disagreement
 import Aladdin.Back.Kernel.HOPU.Select
 import Aladdin.Back.Kernel.HOPU.Util
 import Control.Monad.IO.Class
@@ -46,7 +46,7 @@ bind var = go . rewrite HNF where
                     return (lhs_tail_elements : lhs_tail)
             lhs_head <- get_lhs_head ([ rewriteWithSusp param 0 lambda [] NF | param <- parameters ] ++ map mkNIdx [lambda, lambda - 1 .. 1])
             lhs_tail <- foldbind rhs_tail
-            return (List.foldl' mkNApp lhs_head lhs_tail)
+            return (foldlNApp lhs_head lhs_tail)
         | (LVar var', rhs_tail) <- unfoldlNApp rhs
         = if var == var'
             then lift (throwE OccursCheckFail)
@@ -73,8 +73,8 @@ bind var = go . rewrite HNF where
                                 rhs_outer <- common_arguments `down` rhs_arguments
                                 return (lhs_inner ++ lhs_outer, rhs_inner ++ rhs_outer)
                         common_head <- getNewLVar isty (lookupLabel var labeling)
-                        modify (zonkLVar (var' +-> makeNestedNAbs (length rhs_tail) (List.foldl' mkNApp common_head selected_rhs_arguments)))
-                        return (List.foldl' mkNApp common_head selected_lhs_arguments)
+                        modify (zonkLVar (var' +-> makeNestedNAbs (length rhs_tail) (foldlNApp common_head selected_rhs_arguments)))
+                        return (foldlNApp common_head selected_lhs_arguments)
                     else lift (throwE NotAPattern)
         | otherwise
         = lift (throwE BindFail)

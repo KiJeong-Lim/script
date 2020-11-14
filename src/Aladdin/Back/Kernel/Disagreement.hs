@@ -1,4 +1,4 @@
-module Aladdin.Back.Base.Disagreement where
+module Aladdin.Back.Kernel.Disagreement where
 
 import Aladdin.Back.Base.TermNode
 import Aladdin.Back.Base.TermNode.Show

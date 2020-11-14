@@ -1,10 +1,10 @@
 module Aladdin.Back.Kernel.HOPU.MkSubst where
 
-import Aladdin.Back.Base.Disagreement
 import Aladdin.Back.Base.Labeling
 import Aladdin.Back.Base.TermNode
 import Aladdin.Back.Base.TermNode.Util
 import Aladdin.Back.Base.VarBinding
+import Aladdin.Back.Kernel.Disagreement
 import Aladdin.Back.Kernel.HOPU.Bind
 import Aladdin.Back.Kernel.HOPU.Select
 import Aladdin.Back.Kernel.HOPU.Util
@@ -35,7 +35,7 @@ mksubst var rhs parameters sol = catchE (Just . snd <$> runStateT (go var (rewri
             if isPatternRespectTo var' rhs_arguments labeling
                 then do
                     common_head <- getNewLVar isty (lookupLabel var labeling)
-                    modify (zonkLVar (var' +-> makeNestedNAbs n (List.foldl' mkNApp common_head common_arguments)))
+                    modify (zonkLVar (var' +-> makeNestedNAbs n (foldlNApp common_head common_arguments)))
                 else lift (throwE NotAPattern)
         | otherwise
         = do

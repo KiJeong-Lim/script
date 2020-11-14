@@ -1,10 +1,10 @@
 module Aladdin.Back.Kernel.HOPU.Simplify where
 
-import Aladdin.Back.Base.Disagreement
 import Aladdin.Back.Base.Labeling
 import Aladdin.Back.Base.TermNode
 import Aladdin.Back.Base.TermNode.Util
 import Aladdin.Back.Base.VarBinding
+import Aladdin.Back.Kernel.Disagreement
 import Aladdin.Back.Kernel.HOPU.Bind
 import Aladdin.Back.Kernel.HOPU.MkSubst
 import Aladdin.Back.Kernel.HOPU.Select
@@ -44,11 +44,11 @@ simplify changed = go where
             | (lambda1, lhs') <- viewNestedNAbs lhs
             , (rhs_head, rhs_tail) <- unfoldlNApp rhs
             , lambda1 > 0 && isRigid rhs_head
-            = aux lhs' (List.foldl' mkNApp rhs (map mkNIdx [lambda1, lambda1 - 1 .. 1]))
+            = aux lhs' (foldlNApp rhs (map mkNIdx [lambda1, lambda1 - 1 .. 1]))
             | (lhs_head, lhs_tail) <- unfoldlNApp lhs
             , (lambda2, rhs') <- viewNestedNAbs rhs
             , isRigid lhs_head && lambda2 > 0
-            = aux (List.foldl' mkNApp lhs (map mkNIdx [lambda2, lambda2 - 1 .. 1])) rhs'
+            = aux (foldlNApp lhs (map mkNIdx [lambda2, lambda2 - 1 .. 1])) rhs'
             | (lhs_head, lhs_tail) <- unfoldlNApp lhs
             , (rhs_head, rhs_tail) <- unfoldlNApp rhs
             , isRigid lhs_head && isRigid rhs_head

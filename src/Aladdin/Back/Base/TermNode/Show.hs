@@ -110,6 +110,7 @@ theReservedSymbols = Map.fromList
     , (show LO_sigma, ID_PrefixOperator 5 "sigma ")
     , (show DC_cons, ID_InfixOperator A_right 6 " :: ")
     , (show DC_nil, ID_Name "[]")
+    , (show DC_eq, ID_InfixOperator A_none 5 " = ")
     , (show TC_arrow, ID_InfixOperator A_right 5 " -> ")
     , (show TC_o, ID_Name "o")
     , (show TC_list, ID_Name "list")

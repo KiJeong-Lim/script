@@ -24,6 +24,7 @@ data DataConstructor
     | DC_ChrL Char
     | DC_nil
     | DC_cons
+    | DC_eq
     deriving (Eq, Ord)
 
 data TypeConstructor
@@ -65,6 +66,7 @@ instance Show DataConstructor where
     showsPrec prec (DC_ChrL chr) = showsPrec 0 chr
     showsPrec prec (DC_nil) = strstr "__nil"
     showsPrec prec (DC_cons) = strstr "__cons"
+    showsPrec prec (DC_eq) = strstr "__eq"
 
 instance Show TypeConstructor where
     show = flip (showsPrec 0) ""

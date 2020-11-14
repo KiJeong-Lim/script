@@ -6,7 +6,7 @@ import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 
-infix 2 +->
+infix 1 +->
 
 newtype VarBinding
     = VarBinding { unVarBinding :: Map.Map LogicVar TermNode }
