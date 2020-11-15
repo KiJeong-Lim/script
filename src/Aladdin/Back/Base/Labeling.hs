@@ -25,26 +25,61 @@ class Labelable atom where
 instance Labelable Constant where
     enrollLabel atom level labeling = labeling { _ConLabel = Map.insert atom level (_ConLabel labeling) }
     updateLabel atom level labeling = labeling { _ConLabel = Map.insert atom level (_ConLabel labeling) }
-    lookupLabel atom labeling = maybe 0 id (Map.lookup atom (_ConLabel labeling))
+    lookupLabel (LO logical_operator) = const 0
+    lookupLabel (DC data_constructor) = maybe (theDefaultLevel data_constructor) id . Map.lookup (DC data_constructor) . _ConLabel
+    lookupLabel (TC type_constructor) = const 0
 
 instance Labelable LogicVar where
     enrollLabel atom level labeling = labeling { _VarLabel = Map.insert atom level (_VarLabel labeling) }
     updateLabel atom level labeling = labeling { _VarLabel = Map.insert atom level (_VarLabel labeling) }
-    lookupLabel atom labeling = maybe 0 id (Map.lookup atom (_VarLabel labeling))
+    lookupLabel (LV_Named name) = maybe 0 id . Map.lookup (LV_Named name) . _VarLabel
+    lookupLabel atom = maybe maxBound id . Map.lookup atom . _VarLabel
 
 instance ZonkLVar Labeling where
-    zonkLVar theta labeling = labeling { _VarLabel = Map.mapWithKey loop (_VarLabel labeling) } where
-        loop :: LogicVar -> ScopeLevel -> ScopeLevel
-        loop v label = foldr min label
-            [ label'
-            | (v', t') <- Map.toList (unVarBinding theta)
-            , v `Set.member` getFreeLVs t'
-            , label' <- fromMaybeToList (Map.lookup v' (_VarLabel labeling))
-            ]
+    zonkLVar theta labeling
+        = labeling
+            { _VarLabel = Map.unions
+                [ Map.fromAscList
+                    [ mkstrict
+                        ( v
+                        , foldr min level
+                            [ level'
+                            | (v', t') <- Map.toList mapsto
+                            , v `Set.member` getFreeLVs t'
+                            , level' <- fromMaybeToList (Map.lookup v' varlabel)
+                            ]
+                        )
+                    | (v, level) <- Map.toAscList varlabel
+                    ]
+                , Map.fromAscList
+                    [ mkstrict
+                        ( v
+                        , foldr min maxBound
+                            [ level'
+                            | (v', t') <- Map.toList mapsto
+                            , v `Set.member` getFreeLVs t'
+                            , level' <- fromMaybeToList (Map.lookup v' varlabel)
+                            ]
+                        )
+                    | v <- Set.toAscList (Map.keysSet mapsto `Set.difference` Map.keysSet varlabel)
+                    ]
+                ]
+            }
+        where
+            mapsto :: Map.Map LogicVar TermNode
+            mapsto = unVarBinding theta
+            varlabel :: Map.Map LogicVar ScopeLevel
+            varlabel = _VarLabel labeling
+            mkstrict :: (LogicVar, ScopeLevel) -> (LogicVar, ScopeLevel)
+            mkstrict pair = snd pair `seq` pair
 
 fromMaybeToList :: Maybe a -> [a]
 fromMaybeToList Nothing = []
 fromMaybeToList (Just x) = [x]
+
+theDefaultLevel :: DataConstructor -> ScopeLevel
+theDefaultLevel (DC_Unique uni) = maxBound
+theDefaultLevel _ = 0
 
 theEmptyLabeling :: Labeling
 theEmptyLabeling = Labeling
