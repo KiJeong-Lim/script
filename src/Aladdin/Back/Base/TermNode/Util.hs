@@ -50,8 +50,8 @@ unfoldlNApp = flip go [] where
     go (NApp t1 t2) ts = go t1 (t2 : ts)
     go t ts = (t, ts)
 
-lensForSusp :: (TermNode -> TermNode) -> SuspEnv -> SuspEnv
-lensForSusp delta = map go where
+lensForSuspEnv :: (TermNode -> TermNode) -> SuspEnv -> SuspEnv
+lensForSuspEnv delta = map go where
     go :: SuspItem -> SuspItem
     go (Dummy l) = mkDummy l
     go (Binds t l) = mkBinds (delta t) l

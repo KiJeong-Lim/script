@@ -73,7 +73,7 @@ flatten (VarBinding mapsto) = go where
     go (NIdx i) = mkNIdx i
     go (NApp t1 t2) = mkNApp (go t1) (go t2)
     go (NAbs t) = mkNAbs (go t)
-    go (Susp t ol nl env) = mkSusp (go t) ol nl (lensForSusp go env)
+    go (Susp t ol nl env) = mkSusp (go t) ol nl (lensForSuspEnv go env)
 
 (+->) :: LogicVar -> TermNode -> Maybe VarBinding
 v +-> t
