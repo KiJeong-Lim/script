@@ -37,6 +37,7 @@ executable aladdin
         Aladdin.Back.Kernel.HOPU.MkSubst
         Aladdin.Back.Kernel.HOPU.Select
         Aladdin.Back.Kernel.HOPU.Simplify
+        Aladdin.Back.Kernel.HOPU.Test
         Aladdin.Back.Kernel.HOPU.Util
         Aladdin.Back.Kernel.Runtime.LogicalOperator
         Aladdin.Back.Kernel.Runtime.Instantiation

@@ -75,8 +75,8 @@ flatten (VarBinding mapsto) = go where
     go (NAbs t) = mkNAbs (go t)
     go (Susp t ol nl env) = mkSusp (go t) ol nl (lensForSusp go env)
 
-(+->) :: LogicVar -> TermNode -> VarBinding
+(+->) :: LogicVar -> TermNode -> Maybe VarBinding
 v +-> t
-    | LVar v == t = mempty
-    | v `Set.member` getFreeLVs t = error "(+->): occurs-check failed."
-    | otherwise = VarBinding (Map.singleton v t)
+    | LVar v == t = return mempty
+    | v `Set.member` getFreeLVs t = Nothing
+    | otherwise = return (VarBinding (Map.singleton v t))

@@ -55,7 +55,7 @@ getNewLVar isty label = do
     put (sol { _SolLabeling = enrollLabel sym label (_SolLabeling sol) })
     return (mkLVar sym)
 
-isType :: LogicVar -> Bool
-isType (LV_ty_var uni) = True
-isType (LV_Named name) = False
-isType (LV_Unique uni) = False
+isTypeLVar :: LogicVar -> Bool
+isTypeLVar (LV_ty_var uni) = True
+isTypeLVar (LV_Named name) = False
+isTypeLVar (LV_Unique uni) = False

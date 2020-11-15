@@ -53,28 +53,28 @@ bind var = go . rewrite HNF where
             else do
                 sol <- get
                 let labeling = _SolLabeling sol
-                    isty = isType var
+                    isty = isTypeLVar var
                     lhs_arguments = [ rewriteWithSusp param 0 lambda [] NF | param <- parameters ] ++ map mkNIdx [lambda, lambda - 1 .. 1]
                     rhs_arguments = map (rewrite NF) rhs_tail
                     common_arguments = Set.toList (Set.fromList lhs_arguments `Set.intersection` Set.fromList rhs_arguments)
                 if isPatternRespectTo var' rhs_arguments labeling
                     then do
-                        (selected_lhs_arguments, selected_rhs_arguments) <- case lookupLabel var labeling `compare` lookupLabel var' labeling of
+                        (lhs_inner, rhs_inner) <- case lookupLabel var labeling `compare` lookupLabel var' labeling of
                             LT -> do
-                                rhs_inner <- lhs_arguments `up` var'
-                                lhs_inner <- rhs_inner `down` lhs_arguments
-                                rhs_outer <- common_arguments `down` rhs_arguments
-                                lhs_outer <- common_arguments `down` lhs_arguments
-                                return (lhs_inner ++ lhs_outer, rhs_inner ++ rhs_outer)
+                                selected_rhs_parameters <- lhs_arguments `up` var'
+                                selected_lhs_parameters <- selected_rhs_parameters`down` lhs_arguments
+                                return (selected_lhs_parameters, selected_rhs_parameters)
                             geq -> do
-                                lhs_inner <- rhs_arguments `up` var
-                                rhs_inner <- lhs_inner `down` rhs_arguments
-                                lhs_outer <- common_arguments `down` lhs_arguments
-                                rhs_outer <- common_arguments `down` rhs_arguments
-                                return (lhs_inner ++ lhs_outer, rhs_inner ++ rhs_outer)
+                                selected_lhs_parameters <- rhs_arguments `up` var
+                                selected_rhs_parameters <- selected_lhs_parameters `down` rhs_arguments
+                                return (selected_lhs_parameters, selected_rhs_parameters)
+                        lhs_outer <- common_arguments `down` lhs_arguments
+                        rhs_outer <- common_arguments `down` rhs_arguments
                         common_head <- getNewLVar isty (lookupLabel var labeling)
-                        modify (zonkLVar (var' +-> makeNestedNAbs (length rhs_tail) (foldlNApp common_head selected_rhs_arguments)))
-                        return (foldlNApp common_head selected_lhs_arguments)
+                        case var' +-> makeNestedNAbs (length rhs_tail) (foldlNApp common_head (rhs_inner ++ rhs_outer)) of
+                            Nothing -> lift (throwE OccursCheckFail)
+                            Just theta -> modify (zonkLVar theta)
+                        return (foldlNApp common_head (lhs_inner ++ lhs_outer))
                     else lift (throwE NotAPattern)
         | otherwise
         = lift (throwE BindFail)

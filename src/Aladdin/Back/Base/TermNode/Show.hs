@@ -118,6 +118,10 @@ theReservedSymbols = Map.fromList
     ]
 
 getIdentifierOfConstant :: Constant -> Identifier
+getIdentifierOfConstant (DC (DC_Unique uni))
+    = ID_Name ("dcon_" ++ show (hashUnique uni))
+getIdentifierOfConstant (TC (TC_Unique uni))
+    = ID_Name ("tcon_" ++ show (hashUnique uni))
 getIdentifierOfConstant (DC (DC_Named name))
     = ID_Name name
 getIdentifierOfConstant (TC (TC_Named name))
@@ -137,8 +141,8 @@ makeTermViewer = fst . runIdentity . uncurry (runStateT . format . erase) . runI
     build :: [Int] -> TermNode -> StateT Int Identity TermViewer
     build vars (LVar v)
         = case v of
-            LV_ty_var uni -> return (TVarViewer ("TV_" ++ show (hashUnique uni)))
-            LV_Unique uni -> return (LVarViewer ("V_" ++ show (hashUnique uni)))
+            LV_ty_var uni -> return (TVarViewer ("TVar_" ++ show (hashUnique uni)))
+            LV_Unique uni -> return (LVarViewer ("LVar_" ++ show (hashUnique uni)))
             LV_Named str -> return (LVarViewer str)
     build vars (NCon c)
         | TC type_constructor <- c
