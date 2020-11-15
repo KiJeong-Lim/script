@@ -3,10 +3,8 @@ module Aladdin.Back.Kernel.Runtime.Util where
 import Aladdin.Back.Base.Labeling
 import Aladdin.Back.Base.TermNode
 import Aladdin.Back.Base.VarBinding
-import Aladdin.Back.Kernel.Constraint
 import Aladdin.Back.Kernel.Disagreement
 import Aladdin.Back.Kernel.KernelErr
-import Aladdin.Back.Kernel.Reducer.Util
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
 import qualified Data.List as List
@@ -34,7 +32,7 @@ data Context
     = Context
         { _TotalVarBinding :: VarBinding
         , _CurrentLabeling :: Labeling
-        , _LeftConstraints :: [Constraint]
+        , _LeftConstraints :: [Disagreement]
         }
     deriving ()
 
@@ -42,7 +40,6 @@ data RuntimeEnv
     = RuntimeEnv
         { _PutStr :: String -> IO ()
         , _Answer :: Context -> IO Satisfied
-        , _Reduce :: [Fact] -> Constraint -> [Constraint] -> Labeling -> ExceptT KernelErr IO [Solution]
         }
     deriving ()
 

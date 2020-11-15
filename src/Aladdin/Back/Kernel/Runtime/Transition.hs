@@ -5,12 +5,10 @@ import Aladdin.Back.Base.Labeling
 import Aladdin.Back.Base.TermNode
 import Aladdin.Back.Base.TermNode.Util
 import Aladdin.Back.Base.VarBinding
-import Aladdin.Back.Kernel.Constraint
 import Aladdin.Back.Kernel.Disagreement
 import Aladdin.Back.Kernel.HOPU
 import Aladdin.Back.Kernel.HOPU.Util
 import Aladdin.Back.Kernel.KernelErr
-import Aladdin.Back.Kernel.Reducer.Util
 import Aladdin.Back.Kernel.Runtime.Instantiation
 import Aladdin.Back.Kernel.Runtime.LogicalOperator
 import Aladdin.Back.Kernel.Runtime.Util
@@ -21,37 +19,29 @@ import Control.Monad.Trans.State.Strict
 
 runTransition :: RuntimeEnv -> Stack -> [Stack] -> ExceptT KernelErr IO Satisfied
 runTransition env = go where
-    searchStarStar :: [Fact] -> ScopeLevel -> DataConstructor -> [TermNode] -> Context -> [Cell] -> Stack -> ExceptT KernelErr IO Stack
-    searchStarStar facts level pred args ctx cells stack = do
-        solutions <- _Reduce env facts (Statement pred args) (_LeftConstraints ctx) (_CurrentLabeling ctx)
-        fmap concat $ sequence
-            [ case (applyBinding subst facts, subst <> _TotalVarBinding ctx) of
-                (facts', binding') -> fmap concat $ forM facts' $ \fact' -> do
-                    let failure = return []
-                        success with = return [with]
-                    ((goal', new_goal), labeling') <- runStateT (instantiateFact fact' level) labeling
-                    case unfoldlNApp (rewrite HNF goal') of
-                        (NCon (DC pred'), args')
-                            | pred == pred' -> do
-                                hopu_ouput <- if length args == length args'
-                                    then liftIO (runHOPU labeling' ([ lhs :=?=: rhs | (lhs, rhs) <- zip args args' ] ++ [ disagreement | Disagreement disagreement <- constraints ]))
-                                    else throwE (BadFactGiven goal')
-                                case hopu_ouput of
-                                    Nothing -> failure
-                                    Just (disagreements', HopuSol new_labeling subst') -> success
-                                        ( Context
-                                            { _TotalVarBinding = subst' <> binding'
-                                            , _CurrentLabeling = new_labeling
-                                            , _LeftConstraints = concat
-                                                [ map Disagreement disagreements'
-                                                , [ Statement pred'' (applyBinding subst' args'') | Statement pred'' args'' <- constraints ]
-                                                ]
-                                            }
-                                        , zonkLVar subst' (Cell facts' level new_goal) : map (zonkLVar (subst' <> subst)) cells
-                                        )
-                        _ -> failure
-            | Solution labeling subst constraints <- solutions
-            ]
+    search :: [Fact] -> ScopeLevel -> DataConstructor -> [TermNode] -> Context -> [Cell] -> Stack -> ExceptT KernelErr IO Stack
+    search facts level pred args ctx cells stack
+        = fmap concat $ forM facts $ \fact -> do
+            let failure = return []
+                success with = return [with]
+            ((goal', new_goal), labeling) <- runStateT (instantiateFact fact level) (_CurrentLabeling ctx)
+            case unfoldlNApp (rewrite HNF goal') of
+                (NCon (DC pred'), args')
+                    | pred == pred' -> do
+                        hopu_ouput <- if length args == length args'
+                            then liftIO (runHOPU labeling ([ lhs :=?=: rhs | (lhs, rhs) <- zip args args' ] ++ _LeftConstraints ctx))
+                            else throwE (BadFactGiven goal')
+                        case hopu_ouput of
+                            Nothing -> failure
+                            Just (disagreements, HopuSol new_labeling subst) -> success
+                                ( Context
+                                    { _TotalVarBinding = subst <> _TotalVarBinding ctx
+                                    , _CurrentLabeling = new_labeling
+                                    , _LeftConstraints = disagreements
+                                    }
+                                , zonkLVar subst (Cell facts level new_goal : cells)
+                                )
+                _ -> failure
     loop :: Context -> [Fact] -> ScopeLevel -> (TermNode, [TermNode]) -> [Cell] -> Stack -> [Stack] -> ExceptT KernelErr IO Satisfied
     loop ctx facts level (NCon key, args) cells stack stacks
         | LO logical_operator <- key
@@ -60,12 +50,14 @@ runTransition env = go where
             go stack' stacks
         | DC DC_eq <- key = case args of
             [typ, lhs, rhs] -> do
-                solutions <- _Reduce env facts (Disagreement (lhs :=?=: rhs)) (_LeftConstraints ctx) (_CurrentLabeling ctx)
-                go ([ (Context (subst <> _TotalVarBinding ctx) labeling constraints, map (zonkLVar subst) cells) | Solution labeling subst constraints <- solutions ] ++ stack) stacks
+                hopu_ouput <- liftIO (runHOPU (_CurrentLabeling ctx) (lhs :=?=: rhs : _LeftConstraints ctx))
+                case hopu_ouput of
+                    Nothing -> go stack stacks
+                    Just (disagreements, HopuSol new_labeling subst) -> go ((Context (subst <> _TotalVarBinding ctx) new_labeling disagreements, zonkLVar subst cells) : stack) stacks
             _ -> throwE (BadGoalGiven (foldlNApp (mkNCon key) args))
         | DC pred <- key
         = do
-            stack' <- searchStarStar facts level pred args ctx cells stack
+            stack' <- search facts level pred args ctx cells stack
             go stack' (stack : stacks)
     loop ctx facts level (t, ts) cells stack stacks = throwE (BadGoalGiven (foldlNApp t ts))
     go :: Stack -> [Stack] -> ExceptT KernelErr IO Satisfied

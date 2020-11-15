@@ -5,6 +5,8 @@ import Aladdin.Back.Base.TermNode.Show
 import Aladdin.Back.Base.VarBinding
 import Lib.Base
 
+infix 6 :=?=:
+
 data Disagreement
     = TermNode :=?=: TermNode
     deriving (Eq)

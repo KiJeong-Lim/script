@@ -57,6 +57,9 @@ instance Monoid VarBinding where
 instance ZonkLVar VarBinding where
     zonkLVar theta2 theta1 = theta2 <> theta1
 
+instance ZonkLVar a => ZonkLVar [a] where
+    zonkLVar = map . zonkLVar
+
 getFreeLVs :: HasLVar expr => expr -> Set.Set LogicVar
 getFreeLVs = flip getFreeLVars Set.empty
 
