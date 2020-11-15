@@ -59,17 +59,17 @@ bind var = go . rewrite HNF where
                     common_arguments = Set.toList (Set.fromList lhs_arguments `Set.intersection` Set.fromList rhs_arguments)
                 if isPatternRespectTo var' rhs_arguments labeling
                     then do
-                        (lhs_inner, rhs_inner) <- case lookupLabel var labeling `compare` lookupLabel var' labeling of
+                        (rhs_inner, lhs_inner) <- case lookupLabel var labeling `compare` lookupLabel var' labeling of
                             LT -> do
-                                selected_rhs_parameters <- lhs_arguments `up` var'
-                                selected_lhs_parameters <- selected_rhs_parameters`down` lhs_arguments
+                                selected_lhs_parameters <- lhs_arguments `up` var'
+                                selected_rhs_parameters <- selected_lhs_parameters `down` lhs_arguments
                                 return (selected_lhs_parameters, selected_rhs_parameters)
                             geq -> do
-                                selected_lhs_parameters <- rhs_arguments `up` var
-                                selected_rhs_parameters <- selected_lhs_parameters `down` rhs_arguments
+                                selected_rhs_parameters <- rhs_arguments `up` var
+                                selected_lhs_parameters <- selected_rhs_parameters `down` rhs_arguments
                                 return (selected_lhs_parameters, selected_rhs_parameters)
-                        lhs_outer <- common_arguments `down` lhs_arguments
                         rhs_outer <- common_arguments `down` rhs_arguments
+                        lhs_outer <- common_arguments `down` lhs_arguments
                         common_head <- getNewLVar isty (lookupLabel var labeling)
                         case var' +-> makeNestedNAbs (length rhs_tail) (foldlNApp common_head (rhs_inner ++ rhs_outer)) of
                             Nothing -> lift (throwE OccursCheckFail)
