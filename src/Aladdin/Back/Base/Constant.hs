@@ -62,7 +62,7 @@ instance Show DataConstructor where
     show = flip (showsPrec 0) ""
     showList = undefined
     showsPrec prec (DC_Named name) = strstr name
-    showsPrec prec (DC_Unique uni) = strstr "c_" . showsPrec 0 (hashUnique uni)
+    showsPrec prec (DC_Unique uni) = strstr "dcon_" . showsPrec 0 (hashUnique uni)
     showsPrec prec (DC_ChrL chr) = showsPrec 0 chr
     showsPrec prec (DC_nil) = strstr "__nil"
     showsPrec prec (DC_cons) = strstr "__cons"
@@ -76,7 +76,7 @@ instance Show TypeConstructor where
     showsPrec prec (TC_list) = strstr "__list"
     showsPrec prec (TC_char) = strstr "__char"
     showsPrec prec (TC_Named name) = strstr name
-    showsPrec prec (TC_Unique uni) = strstr "tc_" . showsPrec 0 (hashUnique uni)
+    showsPrec prec (TC_Unique uni) = strstr "tcon_" . showsPrec 0 (hashUnique uni)
 
 instance Show Constant where
     show = flip (showsPrec 0) ""

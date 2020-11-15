@@ -20,7 +20,9 @@ runHopuTestCase :: [Disagreement] -> Labeling -> IO ()
 runHopuTestCase disagreements labeling = do
     output <- runHOPU labeling disagreements
     case output of
-        Nothing -> putStrLn (">>> Failure.")
+        Nothing -> do
+            putStrLn (">>> Failure.")
+            return ()
         Just (new_disagreements, HopuSol new_labeling subst) -> do
             putStrLn (">>> Success.")
             putStrLn ("* logicvar-labeling:")
@@ -50,6 +52,24 @@ testHOPU 1 = runHopuTestCase disagreements labeling where
         , _VarLabel = Map.fromList
             [ (LV_Named "X", 0)
             , (LV_Named "Y", 0)
+            ]
+        }
+testHOPU 2 = runHopuTestCase disagreements labeling where
+    disagreements :: [Disagreement]
+    disagreements = map (uncurry (:=?=:))
+        [ (read "X\\ H X c4 c1 c2 c3", read "Y\\ H c5 c2 c1 c3 Y")
+        ]
+    labeling :: Labeling
+    labeling = Labeling
+        { _ConLabel = Map.fromList
+            [ (DC (DC_Named "c1"), 1)
+            , (DC (DC_Named "c2"), 2)
+            , (DC (DC_Named "c3"), 3)
+            , (DC (DC_Named "c4"), 4)
+            , (DC (DC_Named "c5"), 5)
+            ]
+        , _VarLabel = Map.fromList
+            [ (LV_Named "H", 0)
             ]
         }
 testHOPU _ = return ()

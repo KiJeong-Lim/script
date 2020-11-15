@@ -38,8 +38,8 @@ data SuspItem
 instance Show LogicVar where
     show = flip (showsPrec 0) ""
     showList = undefined
-    showsPrec prec (LV_ty_var uni) = strstr "TV_" . showsPrec prec (hashUnique uni)
-    showsPrec prec (LV_Unique uni) = strstr "V_" . showsPrec prec (hashUnique uni)
+    showsPrec prec (LV_ty_var uni) = strstr "TVar_" . showsPrec prec (hashUnique uni)
+    showsPrec prec (LV_Unique uni) = strstr "LVar_" . showsPrec prec (hashUnique uni)
     showsPrec prec (LV_Named name) = strstr name
 
 mkLVar :: LogicVar -> TermNode
