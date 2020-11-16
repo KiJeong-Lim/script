@@ -60,7 +60,7 @@ mkNAbs t = t `seq` NAbs t
 
 mkSusp :: TermNode -> Int -> Int -> SuspEnv -> TermNode
 mkSusp t 0 0 [] = t
-mkSusp t ol nl env = t `seq` env `seq` Susp { getSuspBody = t, getSuspOL = ol, getSuspNL = nl, getSuspEnv = env }
+mkSusp t ol nl env = t `seq` Susp { getSuspBody = t, getSuspOL = ol, getSuspNL = nl, getSuspEnv = env }
 
 mkDummy :: Int -> SuspItem
 mkDummy l = l `seq` Dummy l
