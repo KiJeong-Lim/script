@@ -69,3 +69,6 @@ showsCurrentState ctx cells stack = strcat
         ]
     , strstr "--------------------------------" . nl
     ]
+
+mkCell :: [Fact] -> ScopeLevel -> Goal -> Cell
+mkCell facts level goal = facts `seq` level `seq` goal `seq` Cell { _GivenFacts = facts, _ScopeLevel = level, _WantedGoal = goal }

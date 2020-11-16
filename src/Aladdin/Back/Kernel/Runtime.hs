@@ -19,4 +19,4 @@ initialContext = Context
     }
 
 execRuntime :: RuntimeEnv -> [Fact] -> Goal -> ExceptT KernelErr IO Satisfied
-execRuntime env program query = runTransition env [(initialContext, [Cell program 0 query])] []
+execRuntime env program query = runTransition env [(initialContext, [mkCell program 0 query])] []

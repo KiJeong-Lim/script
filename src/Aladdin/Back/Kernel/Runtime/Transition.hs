@@ -43,7 +43,7 @@ runTransition env = go where
                                     , _CurrentLabeling = new_labeling
                                     , _LeftConstraints = new_disagreements
                                     }
-                                , zonkLVar subst (Cell new_facts new_level new_goal : cells)
+                                , zonkLVar subst (mkCell new_facts new_level new_goal : cells)
                                 )
                 _ -> failure
     dispatch :: Context -> [Fact] -> ScopeLevel -> (TermNode, [TermNode]) -> [Cell] -> Stack -> [Stack] -> ExceptT KernelErr IO Satisfied
