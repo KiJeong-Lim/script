@@ -27,5 +27,5 @@ instantiateFact fact level
             modify (enrollLabel var level)
             instantiateFact (mkNApp fact1 (mkLVar var)) level
         (NCon (LO LO_if), [conclusion, premise]) -> return (conclusion, premise)
-        (NCon (LO logical_operator), args) -> lift (throwE (BadFactGiven (foldlNApp (mkNCon (LO logical_operator)) args)))
+        (NCon (LO logical_operator), args) -> lift (throwE (BadFactGiven (foldlNApp (mkNCon logical_operator) args)))
         (t, ts) -> return (foldlNApp t ts, mkNCon (LO LO_true))

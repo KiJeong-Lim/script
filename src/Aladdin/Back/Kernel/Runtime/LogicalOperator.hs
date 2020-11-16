@@ -36,4 +36,4 @@ runLogicalOperator LO_pi [goal1] ctx facts level cells stack
         let con = DC (DC_Unique uni)
         return ((ctx { _CurrentLabeling = enrollLabel con (level + 1) (_CurrentLabeling ctx) }, mkCell facts (level + 1) (mkNApp goal1 (mkNCon con)) : cells) : stack)
 runLogicalOperator logical_operator args ctx facts level cells stack
-    = throwE (BadGoalGiven (foldlNApp (mkNCon (LO logical_operator)) args))
+    = throwE (BadGoalGiven (foldlNApp (mkNCon logical_operator) args))

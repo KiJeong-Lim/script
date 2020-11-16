@@ -50,7 +50,6 @@ instance Show Identifier where
     showsPrec prec = strstr . getNameOfIdentifier
 
 instance Show TermViewer where
-    show = flip (showsPrec 0) ""
     showList viewers = strstr "[" . ppunc ", " (map (showsPrec 6) viewers) . strstr "]"
     showsPrec prec = go where
         parenthesize :: Int -> (String -> String) -> String -> String
@@ -78,7 +77,6 @@ instance Show TermViewer where
                 | [] <- viewers -> parenthesize 10 (strstr str)
 
 instance Show TermNode where
-    show = flip (showsPrec 0) ""
     showList = ppunc "\n" . map (showsPrec 0)
     showsPrec prec = showsPrec prec . makeTermViewer
 
@@ -118,18 +116,13 @@ theReservedSymbols = Map.fromList
     ]
 
 getIdentifierOfConstant :: Constant -> Identifier
-getIdentifierOfConstant (DC (DC_Unique uni))
-    = ID_Name ("dcon_" ++ show (hashUnique uni))
-getIdentifierOfConstant (TC (TC_Unique uni))
-    = ID_Name ("tcon_" ++ show (hashUnique uni))
-getIdentifierOfConstant (DC (DC_Named name))
-    = ID_Name name
-getIdentifierOfConstant (TC (TC_Named name))
-    = ID_Name name
 getIdentifierOfConstant con
-    = case Map.lookup (show con) theReservedSymbols of
-        Nothing -> ID_Name "__no_named"
+    = case Map.lookup showcon theReservedSymbols of
+        Nothing -> ID_Name showcon
         Just iden -> iden
+    where
+        showcon :: String
+        showcon = show con
 
 makeTermViewer :: TermNode -> TermViewer
 makeTermViewer = fst . runIdentity . uncurry (runStateT . format . erase) . runIdentity . flip runStateT 1 . build [] . rewrite NF where

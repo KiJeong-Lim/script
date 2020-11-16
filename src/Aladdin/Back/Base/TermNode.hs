@@ -36,7 +36,6 @@ data SuspItem
     deriving (Eq, Ord)
 
 instance Show LogicVar where
-    show = flip (showsPrec 0) ""
     showList = undefined
     showsPrec prec (LV_ty_var uni) = strstr "TVar_" . showsPrec prec (hashUnique uni)
     showsPrec prec (LV_Unique uni) = strstr "LVar_" . showsPrec prec (hashUnique uni)
@@ -45,8 +44,10 @@ instance Show LogicVar where
 mkLVar :: LogicVar -> TermNode
 mkLVar v = v `seq` LVar v
 
-mkNCon :: Constant -> TermNode
-mkNCon c = c `seq` NCon c
+mkNCon :: ToConstant a => a -> TermNode
+mkNCon = go . makeConstant where
+    go :: Constant -> TermNode
+    go c = c `seq` NCon c
 
 mkNIdx :: DeBruijn -> TermNode
 mkNIdx i = i `seq` NIdx i

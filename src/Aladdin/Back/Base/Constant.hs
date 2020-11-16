@@ -42,8 +42,10 @@ data Constant
     | TC TypeConstructor
     deriving (Eq, Ord)
 
+class ToConstant a where
+    makeConstant :: a -> Constant
+
 instance Show LogicalOperator where
-    show = flip (showsPrec 0) ""
     showList = undefined
     showsPrec prec = strstr . go where
         go :: LogicalOperator -> String
@@ -59,7 +61,6 @@ instance Show LogicalOperator where
         go LO_pi = "__pi"
 
 instance Show DataConstructor where
-    show = flip (showsPrec 0) ""
     showList = undefined
     showsPrec prec (DC_Named name) = strstr name
     showsPrec prec (DC_Unique uni) = strstr "dcon_" . showsPrec 0 (hashUnique uni)
@@ -69,7 +70,6 @@ instance Show DataConstructor where
     showsPrec prec (DC_eq) = strstr "__eq"
 
 instance Show TypeConstructor where
-    show = flip (showsPrec 0) ""
     showList = undefined
     showsPrec prec (TC_arrow) = strstr "__arrow"
     showsPrec prec (TC_o) = strstr "__o"
@@ -79,8 +79,19 @@ instance Show TypeConstructor where
     showsPrec prec (TC_Unique uni) = strstr "tcon_" . showsPrec 0 (hashUnique uni)
 
 instance Show Constant where
-    show = flip (showsPrec 0) ""
     showList = undefined
     showsPrec prec (LO logical_operator) = showsPrec prec logical_operator
     showsPrec prec (DC data_constructor) = showsPrec prec data_constructor
     showsPrec prec (TC type_constructor) = showsPrec prec type_constructor
+
+instance ToConstant LogicalOperator where
+    makeConstant = LO
+
+instance ToConstant DataConstructor where
+    makeConstant = DC
+
+instance ToConstant TypeConstructor where
+    makeConstant = TC
+
+instance ToConstant Constant where
+    makeConstant = id
