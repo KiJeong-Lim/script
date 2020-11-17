@@ -36,7 +36,7 @@ instance Labelable LogicVar where
     lookupLabel atom = maybe maxBound id . Map.lookup atom . _VarLabel
 
 instance ZonkLVar Labeling where
-    zonkLVar theta labeling
+    zonkLVar subst labeling
         = labeling
             { _VarLabel = Map.unions
                 [ Map.fromAscList
@@ -67,7 +67,7 @@ instance ZonkLVar Labeling where
             }
         where
             mapsto :: Map.Map LogicVar TermNode
-            mapsto = unVarBinding theta
+            mapsto = unVarBinding subst
             varlabel :: Map.Map LogicVar ScopeLevel
             varlabel = _VarLabel labeling
             mkstrict :: (LogicVar, ScopeLevel) -> (LogicVar, ScopeLevel)

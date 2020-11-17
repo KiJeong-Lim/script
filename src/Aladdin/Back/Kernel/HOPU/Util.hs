@@ -17,8 +17,8 @@ import Lib.Base
 
 data HopuSol
     = HopuSol
-        { _SolLabeling :: Labeling
-        , _SolVBinding :: VarBinding
+        { _ChangedLabelingEnv :: Labeling
+        , _MostGeneralUnifier :: LVarSubst
         }
     deriving ()
 
@@ -33,7 +33,7 @@ data HopuFail
     deriving (Eq)
 
 instance ZonkLVar HopuSol where
-    zonkLVar theta (HopuSol labeling binding) = HopuSol (zonkLVar theta labeling) (zonkLVar theta binding)
+    zonkLVar subst (HopuSol labeling binding) = HopuSol (zonkLVar subst labeling) (zonkLVar subst binding)
 
 viewNestedNAbs :: TermNode -> (Int, TermNode)
 viewNestedNAbs = go 0 where
@@ -52,7 +52,7 @@ getNewLVar isty label = do
     uni <- liftIO newUnique
     let sym = if isty then LV_ty_var uni else LV_Unique uni
     sol <- get
-    put (sol { _SolLabeling = enrollLabel sym label (_SolLabeling sol) })
+    put (sol { _ChangedLabelingEnv = enrollLabel sym label (_ChangedLabelingEnv sol) })
     return (mkLVar sym)
 
 isTypeLVar :: LogicVar -> Bool

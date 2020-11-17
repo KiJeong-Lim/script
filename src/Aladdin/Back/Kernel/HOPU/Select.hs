@@ -51,7 +51,7 @@ zs `down` ts = if downable then return indices else lift (throwE DownFail) where
         ]
 
 up :: Monad m => [TermNode] -> LogicVar -> StateT HopuSol (ExceptT HopuFail m) [TermNode]
-ts `up` y = if upable then findVisibles . _SolLabeling <$> get else lift (throwE UpFail) where
+ts `up` y = if upable then findVisibles . _ChangedLabelingEnv <$> get else lift (throwE UpFail) where
     upable :: Bool
     upable = and
         [ areAllDistinct ts

@@ -130,13 +130,16 @@ makeTermViewer = fst . runIdentity . uncurry (runStateT . format . erase) . runI
         = case data_constructor of
             DC_ChrL chr -> ChrLViewer chr
             DC_NatL nat -> NatLViewer nat
+            DC_Unique uni -> DConViewer (ID_Name (show (hashUnique uni))) []
             other -> case Map.lookup (show other) theReservedSymbols of
                 Nothing -> DConViewer (ID_Name (show other)) []
                 Just iden -> DConViewer iden []
     buildCon (TC type_constructor)
-        = case Map.lookup (show type_constructor) theReservedSymbols of
-            Nothing -> TConViewer (ID_Name (show type_constructor)) []
-            Just iden -> TConViewer iden []
+        = case type_constructor of
+            TC_Unique uni -> TConViewer (ID_Name (show (hashUnique uni))) []
+            other -> case Map.lookup (show other) theReservedSymbols of
+                Nothing -> TConViewer (ID_Name (show other)) []
+                Just iden -> TConViewer iden []
     buildCon (LO logical_operator)
         = case Map.lookup (show logical_operator) theReservedSymbols of
             Nothing -> DConViewer (ID_Name (show logical_operator)) []

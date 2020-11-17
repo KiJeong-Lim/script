@@ -8,6 +8,8 @@ import qualified Data.Set as Set
 
 infix 1 +->
 
+type LVarSubst = VarBinding
+
 newtype VarBinding
     = VarBinding { unVarBinding :: Map.Map LogicVar TermNode }
     deriving (Eq)
@@ -17,7 +19,7 @@ class HasLVar expr where
     applyBinding :: VarBinding -> expr -> expr
 
 class ZonkLVar expr where
-    zonkLVar :: VarBinding -> expr -> expr
+    zonkLVar :: LVarSubst -> expr -> expr
 
 instance HasLVar TermNode where
     getFreeLVars (LVar v) = Set.insert v
@@ -55,7 +57,7 @@ instance Monoid VarBinding where
         map0 = Map.empty
 
 instance ZonkLVar VarBinding where
-    zonkLVar theta2 theta1 = theta2 <> theta1
+    zonkLVar subst binding = subst <> binding
 
 instance ZonkLVar a => ZonkLVar [a] where
     zonkLVar = map . zonkLVar

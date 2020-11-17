@@ -21,14 +21,13 @@ import Data.Unique
 
 type SolutionChanged = Bool
 
-insert' :: Eq a => a -> [a] -> [a]
-insert' x xs
-    | null xs = x : xs
-    | x == head xs = xs
-    | otherwise = head xs : insert' x (tail xs)
-
 simplify :: IORef SolutionChanged -> [Disagreement] -> StateT HopuSol (ExceptT HopuFail IO) [Disagreement]
 simplify changed = go where
+    insert' :: Eq a => a -> [a] -> [a]
+    insert' x xs
+        | null xs = x : xs
+        | x == head xs = xs
+        | otherwise = head xs : insert' x (tail xs)
     go :: [Disagreement] -> StateT HopuSol (ExceptT HopuFail IO) [Disagreement]
     go [] = return []
     go (lhs :=?=: rhs : disagreements) = aux (rewrite HNF lhs) (rewrite HNF rhs) where
@@ -64,7 +63,7 @@ simplify changed = go where
                     Just sol -> do
                         put sol
                         liftIO (writeIORef changed True)
-                        go (applyBinding (_SolVBinding sol) disagreements)
+                        go (applyBinding (_MostGeneralUnifier sol) disagreements)
             | (LVar var, parameters) <- unfoldlNApp rhs
             = do
                 sol <- get
@@ -74,7 +73,7 @@ simplify changed = go where
                     Just sol -> do
                         put sol
                         liftIO (writeIORef changed True)
-                        go (applyBinding (_SolVBinding sol) disagreements)
+                        go (applyBinding (_MostGeneralUnifier sol) disagreements)
             | otherwise
             = solveNext
             where
@@ -82,4 +81,4 @@ simplify changed = go where
                 solveNext = do
                     disagreements' <- go disagreements
                     sol <- get
-                    return (insert' (applyBinding (_SolVBinding sol) (lhs :=?=: rhs)) disagreements)
+                    return (insert' (applyBinding (_MostGeneralUnifier sol) (lhs :=?=: rhs)) disagreements)

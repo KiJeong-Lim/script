@@ -19,7 +19,7 @@ import Data.IORef
 runHOPU :: Labeling -> [Disagreement] -> IO (Maybe ([Disagreement], HopuSol))
 runHOPU labeling disagreements = do
     changed <- newIORef False
-    let sol = HopuSol { _SolLabeling = labeling, _SolVBinding = mempty }
+    let sol = HopuSol { _ChangedLabelingEnv = labeling, _MostGeneralUnifier = mempty }
         loop disagreements = do
             disagreements' <- simplify changed disagreements
             has_changed <- liftIO (readIORef changed)

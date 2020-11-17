@@ -26,7 +26,7 @@ mksubst var rhs parameters sol = catchE (Just . snd <$> runStateT (go var (rewri
         , var == var'
         = do
             sol <- get
-            let labeling = _SolLabeling sol
+            let labeling = _ChangedLabelingEnv sol
                 isty = isTypeLVar var
                 n = length parameters + lambda
                 lhs_arguments = [ rewriteWithSusp param 0 lambda [] NF | param <- parameters ] ++ map mkNIdx [lambda, lambda - 1 .. 1] 
@@ -37,12 +37,12 @@ mksubst var rhs parameters sol = catchE (Just . snd <$> runStateT (go var (rewri
                     common_head <- getNewLVar isty (lookupLabel var labeling)
                     case var' +-> makeNestedNAbs n (foldlNApp common_head common_arguments) of
                         Nothing -> lift (throwE OccursCheckFail)
-                        Just theta -> modify (zonkLVar theta)
+                        Just subst -> modify (zonkLVar subst)
                 else lift (throwE NotAPattern)
         | otherwise
         = do
             sol <- get
-            let labeling = _SolLabeling sol
+            let labeling = _ChangedLabelingEnv sol
                 n = length parameters
                 lhs_arguments = map (rewrite NF) parameters
             if isPatternRespectTo var lhs_arguments labeling
@@ -50,7 +50,7 @@ mksubst var rhs parameters sol = catchE (Just . snd <$> runStateT (go var (rewri
                     lhs <- bind var rhs parameters 0
                     case var +-> makeNestedNAbs n lhs of
                         Nothing -> lift (throwE OccursCheckFail)
-                        Just theta -> modify (zonkLVar theta)
+                        Just subst -> modify (zonkLVar subst)
                 else lift (throwE NotAPattern)
     handleErr :: HopuFail -> ExceptT HopuFail IO (Maybe HopuSol)
     handleErr NotAPattern = return Nothing

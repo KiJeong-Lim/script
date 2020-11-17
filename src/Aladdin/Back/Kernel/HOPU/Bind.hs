@@ -29,7 +29,7 @@ bind var = go . rewrite HNF where
         , isRigid rhs_head
         = do
             sol <- get
-            let labeling = _SolLabeling sol
+            let labeling = _ChangedLabelingEnv sol
                 get_lhs_head lhs_arguments
                     | NCon con <- rhs_head
                     , lookupLabel var labeling >= lookupLabel con labeling
@@ -42,7 +42,7 @@ bind var = go . rewrite HNF where
                 foldbind (rhs_tail_elements : rhs_tail) = do
                     lhs_tail_elements <- bind var rhs_tail_elements parameters lambda
                     sol <- get
-                    lhs_tail <- foldbind (applyBinding (_SolVBinding sol) rhs_tail)
+                    lhs_tail <- foldbind (applyBinding (_MostGeneralUnifier sol) rhs_tail)
                     return (lhs_tail_elements : lhs_tail)
             lhs_head <- get_lhs_head ([ rewriteWithSusp param 0 lambda [] NF | param <- parameters ] ++ map mkNIdx [lambda, lambda - 1 .. 1])
             lhs_tail <- foldbind rhs_tail
@@ -52,7 +52,7 @@ bind var = go . rewrite HNF where
             then lift (throwE OccursCheckFail)
             else do
                 sol <- get
-                let labeling = _SolLabeling sol
+                let labeling = _ChangedLabelingEnv sol
                     isty = isTypeLVar var
                     lhs_arguments = [ rewriteWithSusp param 0 lambda [] NF | param <- parameters ] ++ map mkNIdx [lambda, lambda - 1 .. 1]
                     rhs_arguments = map (rewrite NF) rhs_tail
@@ -73,7 +73,7 @@ bind var = go . rewrite HNF where
                         common_head <- getNewLVar isty (lookupLabel var labeling)
                         case var' +-> makeNestedNAbs (length rhs_tail) (foldlNApp common_head (rhs_inner ++ rhs_outer)) of
                             Nothing -> lift (throwE OccursCheckFail)
-                            Just theta -> modify (zonkLVar theta)
+                            Just subst -> modify (zonkLVar subst)
                         return (foldlNApp common_head (lhs_inner ++ lhs_outer))
                     else lift (throwE NotAPattern)
         | otherwise
