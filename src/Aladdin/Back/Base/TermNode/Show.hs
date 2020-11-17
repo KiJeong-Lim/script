@@ -29,6 +29,7 @@ data TermViewer
     | IAppViewer TermViewer TermViewer
     | ChrLViewer Char
     | StrLViewer String
+    | NatLViewer Integer
     | ListViewer [TermViewer]
     | DConViewer Identifier [TermViewer]
     | TConViewer Identifier [TermViewer]
@@ -64,6 +65,7 @@ instance Show TermViewer where
         go (IAppViewer viewer1 viewer2) = parenthesize 9 (showsPrec 9 viewer1 . strstr " " . showsPrec 10 viewer2)
         go (ChrLViewer chr) = parenthesize 10 (showsPrec 0 chr)
         go (StrLViewer str) = parenthesize 10 (showsPrec 0 str)
+        go (NatLViewer nat) = parenthesize 10 (showsPrec 0 nat)
         go (ListViewer viewers) = showList viewers
         go (DConViewer iden viewers) = case iden of
             ID_InfixOperator associativity precedence str
@@ -107,6 +109,7 @@ theReservedSymbols = Map.fromList
     , (show LO_pi, ID_PrefixOperator 5 "pi ")
     , (show LO_sigma, ID_PrefixOperator 5 "sigma ")
     , (show DC_cons, ID_InfixOperator A_right 6 " :: ")
+    , (show DC_succ, ID_PrefixOperator 9 "++")
     , (show DC_nil, ID_Name "[]")
     , (show DC_eq, ID_InfixOperator A_none 5 " = ")
     , (show TC_arrow, ID_InfixOperator A_right 5 " -> ")
@@ -115,15 +118,6 @@ theReservedSymbols = Map.fromList
     , (show TC_char, ID_Name "char")
     ]
 
-getIdentifierOfConstant :: Constant -> Identifier
-getIdentifierOfConstant con
-    = case Map.lookup showcon theReservedSymbols of
-        Nothing -> ID_Name showcon
-        Just iden -> iden
-    where
-        showcon :: String
-        showcon = show con
-
 makeTermViewer :: TermNode -> TermViewer
 makeTermViewer = fst . runIdentity . uncurry (runStateT . format . erase) . runIdentity . flip runStateT 1 . build [] . rewrite NF where
     isType :: TermViewer -> IsTypeLevel
@@ -131,6 +125,22 @@ makeTermViewer = fst . runIdentity . uncurry (runStateT . format . erase) . runI
     isType (TConViewer _ _) = True
     isType (TAppViewer _ _) = True
     isType _ = False
+    buildCon :: Constant -> TermViewer
+    buildCon (DC data_constructor)
+        = case data_constructor of
+            DC_ChrL chr -> ChrLViewer chr
+            DC_NatL nat -> NatLViewer nat
+            other -> case Map.lookup (show other) theReservedSymbols of
+                Nothing -> DConViewer (ID_Name (show other)) []
+                Just iden -> DConViewer iden []
+    buildCon (TC type_constructor)
+        = case Map.lookup (show type_constructor) theReservedSymbols of
+            Nothing -> TConViewer (ID_Name (show type_constructor)) []
+            Just iden -> TConViewer iden []
+    buildCon (LO logical_operator)
+        = case Map.lookup (show logical_operator) theReservedSymbols of
+            Nothing -> DConViewer (ID_Name (show logical_operator)) []
+            Just iden -> DConViewer iden []
     build :: [Int] -> TermNode -> StateT Int Identity TermViewer
     build vars (LVar v)
         = case v of
@@ -138,10 +148,7 @@ makeTermViewer = fst . runIdentity . uncurry (runStateT . format . erase) . runI
             LV_Unique uni -> return (LVarViewer ("LVar_" ++ show (hashUnique uni)))
             LV_Named str -> return (LVarViewer str)
     build vars (NCon c)
-        | TC type_constructor <- c
-        = return (TConViewer (getIdentifierOfConstant c) [])
-        | otherwise
-        = return (DConViewer (getIdentifierOfConstant c) [])
+        = return (buildCon c)
     build vars (NIdx i)
         = return (IVarViewer (vars !! (i - 1)))
     build vars (NApp t1 t2)

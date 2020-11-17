@@ -1,5 +1,6 @@
 module Aladdin.Back.Base.TermNode.Util where
 
+import Aladdin.Back.Base.Constant
 import Aladdin.Back.Base.TermNode
 import qualified Data.List as List
 
@@ -47,6 +48,12 @@ rewrite option t = rewriteWithSusp t 0 0 [] option
 unfoldlNApp :: TermNode -> (TermNode, [TermNode])
 unfoldlNApp = flip go [] where
     go :: TermNode -> [TermNode] -> (TermNode, [TermNode])
+    go (NCon (DC (DC_NatL n))) ts
+        | n == 0 = (mkNCon (DC_NatL 0), ts)
+        | n > 0 =
+            let n' = n - 1
+            in n' `seq` (mkNCon DC_succ, mkNCon (DC_NatL n') : ts)
+        | otherwise = error "`unfoldlNApp\': negative integer"
     go (NApp t1 t2) ts = go t1 (t2 : ts)
     go t ts = (t, ts)
 

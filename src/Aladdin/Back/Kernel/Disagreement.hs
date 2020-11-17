@@ -12,7 +12,6 @@ data Disagreement
     deriving (Eq)
 
 instance Show Disagreement where
-    show = flip (showsPrec 0) ""
     showList = ppunc "\n" . map (showsPrec 0)
     showsPrec _ (lhs :=?=: rhs) = showsPrec 0 lhs . strstr " =?= " . showsPrec 0 rhs
 

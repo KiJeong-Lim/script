@@ -22,6 +22,8 @@ data DataConstructor
     = DC_Named Name
     | DC_Unique Unique
     | DC_ChrL Char
+    | DC_NatL Integer
+    | DC_succ
     | DC_nil
     | DC_cons
     | DC_eq
@@ -65,6 +67,8 @@ instance Show DataConstructor where
     showsPrec prec (DC_Named name) = strstr name
     showsPrec prec (DC_Unique uni) = strstr "dcon_" . showsPrec 0 (hashUnique uni)
     showsPrec prec (DC_ChrL chr) = showsPrec 0 chr
+    showsPrec prec (DC_NatL nat) = showsPrec 0 nat
+    showsPrec prec (DC_succ) = strstr "__succ"
     showsPrec prec (DC_nil) = strstr "__nil"
     showsPrec prec (DC_cons) = strstr "__cons"
     showsPrec prec (DC_eq) = strstr "__eq"
@@ -85,13 +89,17 @@ instance Show Constant where
     showsPrec prec (TC type_constructor) = showsPrec prec type_constructor
 
 instance ToConstant LogicalOperator where
-    makeConstant = LO
+    makeConstant logical_operator
+        = logical_operator `seq` LO logical_operator
 
 instance ToConstant DataConstructor where
-    makeConstant = DC
+    makeConstant (DC_NatL n)
+        | n >= 0 = DC (DC_NatL n)
+        | otherwise = error "`makeConstant\': negative integer"
+    makeConstant data_constructor = data_constructor `seq` DC data_constructor
 
 instance ToConstant TypeConstructor where
-    makeConstant = TC
+    makeConstant type_constructor = type_constructor `seq` TC type_constructor
 
 instance ToConstant Constant where
     makeConstant = id

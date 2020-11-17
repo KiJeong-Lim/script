@@ -53,6 +53,9 @@ mkNIdx :: DeBruijn -> TermNode
 mkNIdx i = i `seq` NIdx i
 
 mkNApp :: TermNode -> TermNode -> TermNode
+mkNApp (NCon (DC (DC_succ))) (NCon (DC (DC_NatL n))) =
+    let n' = n + 1 
+    in n' `seq` mkNCon (DC_NatL n')
 mkNApp t1 t2 = t1 `seq` t2 `seq` NApp t1 t2
 
 mkNAbs :: TermNode -> TermNode
@@ -60,7 +63,7 @@ mkNAbs t = t `seq` NAbs t
 
 mkSusp :: TermNode -> Int -> Int -> SuspEnv -> TermNode
 mkSusp t 0 0 [] = t
-mkSusp t ol nl env = t `seq` Susp { getSuspBody = t, getSuspOL = ol, getSuspNL = nl, getSuspEnv = env }
+mkSusp t ol nl env = t `seq` ol `seq` nl `seq` env `seq` Susp { getSuspBody = t, getSuspOL = ol, getSuspNL = nl, getSuspEnv = env }
 
 mkDummy :: Int -> SuspItem
 mkDummy l = l `seq` Dummy l
