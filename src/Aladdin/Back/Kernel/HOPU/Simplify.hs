@@ -21,11 +21,11 @@ import Data.Unique
 
 type HasChanged = Bool
 
-simplify :: IO HasChanged -> [Disagreement] -> Labeling -> ExceptT HopuFail IO ([Disagreement], HopuSol)
-simplify changed = loop where
-    loop :: [Disagreement] -> Labeling -> ExceptT HopuFail IO ([Disagreement], HopuSol)
-    loop [] labeling = HopuSol labeling mempty
-    loop (lhs :=?=: rhs : disagreements) labeling = go (rewrite HNF lhs) (rewrite HNF rhs) where
+simplify :: IORef HasChanged -> [Disagreement] -> Labeling -> ExceptT HopuFail IO ([Disagreement], HopuSol)
+simplify changed = flip loop mempty where
+    loop :: [Disagreement] -> LVarSubst -> Labeling -> ExceptT HopuFail IO ([Disagreement], HopuSol)
+    loop [] subst labeling = return ([], HopuSol labeling subst)
+    loop (lhs :=?=: rhs : disagreements) subst labeling = go (rewrite HNF lhs) (rewrite HNF rhs) where
         go :: TermNode -> TermNode -> ExceptT HopuFail IO ([Disagreement], HopuSol)
         go lhs rhs
             | (lambda1, lhs') <- viewNestedNAbs lhs
@@ -47,34 +47,27 @@ simplify changed = loop where
             , (rhs_head, rhs_tail) <- unfoldlNApp rhs
             , isRigid lhs_head && isRigid rhs_head
             = if lhs_head == rhs_head && length lhs_tail == length rhs_tail
-                then do
-                    (disagreements', HopuSol labeling' subst') <- loop [ lhs' :=?=: rhs' | (lhs', rhs') <- zip lhs_tail rhs_tail ] labeling
-                    (disagreements'', HopuSol labeling'' subst'') <- loop (applyBinding subst' disagreements) labeling'
-                    return (applyBinding subst'' disagreements' ++ disagreements'', HopuSol labeling'' (subst'' <> subst'))
+                then loop ([ lhs' :=?=: rhs' | (lhs', rhs') <- zip lhs_tail rhs_tail ] ++ disagreements) subst labeling
                 else throwE RigidRigidFail
             | (LVar var, parameters) <- unfoldlNApp lhs
             = do
-                output <- lift (mksubst var rhs parameters (HopuSol labeling mempty))
+                output <- mksubst var rhs parameters (HopuSol labeling mempty)
                 case output of
                     Nothing -> solveNext
                     Just (HopuSol labeling' subst') -> do
-                        let disagreements' = applyBinding subst' disagreements
                         liftIO (writeIORef changed True)
-                        (disagreements'', HopuSol labeling'' subst'') <- loop disagreements' labeling'
-                        return (disagreements'', HopuSol labeling'' (subst'' <> subst'))
+                        loop (applyBinding subst' disagreements) (subst' <> subst) labeling'
             | (LVar var, parameters) <- unfoldlNApp rhs
             = do
-                output <- lift (mksubst var lhs parameters (HopuSol labeling mempty))
+                output <- mksubst var lhs parameters (HopuSol labeling mempty)
                 case output of
                     Nothing -> solveNext
                     Just (HopuSol labeling' subst') -> do
-                        let disagreements' = applyBinding subst' disagreements
                         liftIO (writeIORef changed True)
-                        (disagreements'', HopuSol labeling'' subst'') <- loop disagreements' labeling'
-                        return (disagreements'', HopuSol labeling'' (subst'' <> subst'))
+                        loop (applyBinding subst' disagreements) (subst' <> subst) labeling'
             | otherwise
             = solveNext
         solveNext :: ExceptT HopuFail IO ([Disagreement], HopuSol)
         solveNext = do
-            (disagreements', HopuSol labeling' subst') <- loop disagreements labeling
-            return (applyBinding subst' (lhs :=?=: rhs) : disagreements', HopuSol labeling' subst')
+            (disagreements', HopuSol labeling' subst') <- loop disagreements mempty labeling
+            return (applyBinding subst' (lhs :=?=: rhs) : disagreements', HopuSol labeling' (subst' <> subst))
