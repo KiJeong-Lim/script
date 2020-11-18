@@ -22,7 +22,7 @@ runTransition env = go where
     failure :: ExceptT KernelErr IO Stack
     failure = return []
     success :: (Context, [Cell]) -> ExceptT KernelErr IO Stack
-    success with = snd with `seq` return [with]
+    success with = return [with]
     search :: [Fact] -> ScopeLevel -> DataConstructor -> [TermNode] -> Context -> [Cell] -> ExceptT KernelErr IO Stack
     search facts level pred args ctx cells
         = fmap concat $ forM facts $ \fact -> do
@@ -39,7 +39,7 @@ runTransition env = go where
                             Nothing -> failure
                             Just (new_disagreements, HopuSol new_labeling subst) -> success
                                 ( Context
-                                    { _TotalVarBinding = subst <> _TotalVarBinding ctx
+                                    { _TotalVarBinding = zonkLVar subst (_TotalVarBinding ctx)
                                     , _CurrentLabeling = new_labeling
                                     , _LeftConstraints = new_disagreements
                                     }
@@ -60,7 +60,7 @@ runTransition env = go where
                     Nothing -> failure
                     Just (new_disagreements, HopuSol new_labeling subst) -> success
                         ( Context
-                            { _TotalVarBinding = subst <> _TotalVarBinding ctx
+                            { _TotalVarBinding = zonkLVar subst (_TotalVarBinding ctx)
                             , _CurrentLabeling = new_labeling
                             , _LeftConstraints = new_disagreements
                             }
