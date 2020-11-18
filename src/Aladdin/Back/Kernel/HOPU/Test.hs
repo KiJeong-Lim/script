@@ -31,7 +31,7 @@ runHopuTestCase disagreements labeling = do
             forM (Map.toList (_ConLabel new_labeling)) $ uncurry $ \con -> \level -> putStrLn ("  - " ++ showsPrec 0 con (" +-> " ++ showsPrec 0 level ";"))
             putStrLn ("* result-substitution:")
             forM (Map.toList (unVarBinding subst)) $ uncurry $ \v -> \t -> putStrLn ("  - " ++ showsPrec 0 v (" := " ++ showsPrec 0 t "."))
-            putStrLn ("* remaining-disagreements = " ++ plist 4 (map (showsPrec 0) new_disagreements) "")
+            putStrLn ("* remaining-disagreements = " ++ plist 2 (map (showsPrec 0) new_disagreements) "")
             return ()
 
 testHOPU :: Int -> IO ()
@@ -59,6 +59,7 @@ testHOPU 2 = runHopuTestCase disagreements labeling where
     disagreements = map (uncurry (:=?=:))
         [ (read "c0 (X1 c1) (X1 c2)", read "c0 c1 c2")
         , (read "c3 (W\\ X1 c1) (X2 c2)", read "c3 X2 (X1 c1)")
+        , (read "X3", read "c3 (X4 c3) X2 (X1 c1)")
         ]
     labeling :: Labeling
     labeling = Labeling
@@ -67,10 +68,38 @@ testHOPU 2 = runHopuTestCase disagreements labeling where
             , (DC (DC_Named "c1"), 1)
             , (DC (DC_Named "c2"), 2)
             , (DC (DC_Named "c3"), 3)
+            , (DC (DC_Named "c4"), 4)
+            , (DC (DC_Named "c5"), 5)
             ]
         , _VarLabel = Map.fromList
             [ (LV_Named "X1", 1)
             , (LV_Named "X2", 2)
+            , (LV_Named "X3", 3)
+            , (LV_Named "X4", 4)
+            ]
+        }
+testHOPU 3 = runHopuTestCase disagreements labeling where
+    disagreements :: [Disagreement]
+    disagreements = map (uncurry (:=?=:))
+        [ (read "c0 (X1 c1) (X1 c2)", read "c0 c1 c2")
+        , (read "c3 (W\\ X1 c1) (X2 c2)", read "c3 X2 (X1 c1)")
+        , (read "X3", read "c3 (X4 c2) X2 (X1 c1)")
+        ]
+    labeling :: Labeling
+    labeling = Labeling
+        { _ConLabel = Map.fromList
+            [ (DC (DC_Named "c0"), 0)
+            , (DC (DC_Named "c1"), 1)
+            , (DC (DC_Named "c2"), 2)
+            , (DC (DC_Named "c3"), 3)
+            , (DC (DC_Named "c4"), 4)
+            , (DC (DC_Named "c5"), 5)
+            ]
+        , _VarLabel = Map.fromList
+            [ (LV_Named "X1", 1)
+            , (LV_Named "X2", 2)
+            , (LV_Named "X3", 3)
+            , (LV_Named "X4", 4)
             ]
         }
 testHOPU _ = return ()
