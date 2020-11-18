@@ -35,7 +35,8 @@ simplify changed = loop where
         solveNext = do
             disagreements' <- loop disagreements
             sol <- get
-            return (insert' (applyBinding (_MostGeneralUnifier sol) (lhs :=?=: rhs)) disagreements)
+            let zonk = rewrite HNF . flatten (_MostGeneralUnifier sol)
+            return (insert' (zonk lhs :=?=: zonk rhs) disagreements)
         go :: TermNode -> TermNode -> StateT HopuSol (ExceptT HopuFail IO) [Disagreement]
         go lhs rhs
             | (lambda1, lhs') <- viewNestedNAbs lhs
@@ -57,7 +58,7 @@ simplify changed = loop where
             , (rhs_head, rhs_tail) <- unfoldlNApp rhs
             , isRigid lhs_head && isRigid rhs_head
             = if lhs_head == rhs_head && length lhs_tail == length rhs_tail
-                then loop ([ lhs :=?=: rhs | (lhs, rhs) <- zip lhs_tail rhs_tail ] ++ disagreements)
+                then loop ([ lhs' :=?=: rhs' | (lhs', rhs') <- zip lhs_tail rhs_tail ] ++ disagreements)
                 else lift (throwE RigidRigidFail)
             | (LVar var, parameters) <- unfoldlNApp lhs
             = do

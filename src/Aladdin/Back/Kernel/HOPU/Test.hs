@@ -57,19 +57,20 @@ testHOPU 1 = runHopuTestCase disagreements labeling where
 testHOPU 2 = runHopuTestCase disagreements labeling where
     disagreements :: [Disagreement]
     disagreements = map (uncurry (:=?=:))
-        [ (read "X\\ H X c4 c1 c2 c3", read "Y\\ H c5 c2 c1 c3 Y")
+        [ (read "c0 (X1 c1) (X1 c2)", read "c0 c1 c2")
+        , (read "c3 (W\\ X1 c1) (X2 c2)", read "c3 X2 (X1 c1)")
         ]
     labeling :: Labeling
     labeling = Labeling
         { _ConLabel = Map.fromList
-            [ (DC (DC_Named "c1"), 1)
+            [ (DC (DC_Named "c0"), 0)
+            , (DC (DC_Named "c1"), 1)
             , (DC (DC_Named "c2"), 2)
             , (DC (DC_Named "c3"), 3)
-            , (DC (DC_Named "c4"), 4)
-            , (DC (DC_Named "c5"), 5)
             ]
         , _VarLabel = Map.fromList
-            [ (LV_Named "H", 0)
+            [ (LV_Named "X1", 1)
+            , (LV_Named "X2", 2)
             ]
         }
 testHOPU _ = return ()

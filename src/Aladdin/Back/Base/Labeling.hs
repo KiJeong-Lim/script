@@ -38,31 +38,17 @@ instance Labelable LogicVar where
 instance ZonkLVar Labeling where
     zonkLVar subst labeling
         = labeling
-            { _VarLabel = Map.unions
-                [ Map.fromAscList
-                    [ mkstrict
-                        ( v
-                        , foldr min level
-                            [ level'
-                            | (v', t') <- Map.toList mapsto
-                            , v `Set.member` getFreeLVs t'
-                            , level' <- fromMaybeToList (Map.lookup v' varlabel)
-                            ]
-                        )
-                    | (v, level) <- Map.toAscList varlabel
-                    ]
-                , Map.fromAscList
-                    [ mkstrict
-                        ( v
-                        , foldr min maxBound
-                            [ level'
-                            | (v', t') <- Map.toList mapsto
-                            , v `Set.member` getFreeLVs t'
-                            , level' <- fromMaybeToList (Map.lookup v' varlabel)
-                            ]
-                        )
-                    | v <- Set.toAscList (Map.keysSet mapsto `Set.difference` Map.keysSet varlabel)
-                    ]
+            { _VarLabel = Map.fromAscList
+                [ mkstrict
+                    ( v
+                    , foldr min (lookupLabel v labeling)
+                        [ level'
+                        | (v', t') <- Map.toList mapsto
+                        , v `Set.member` getFreeLVs t'
+                        , level' <- fromMaybeToList (Map.lookup v' varlabel)
+                        ]
+                    )
+                | v <- Set.toAscList (Map.keysSet mapsto `Set.union` Map.keysSet varlabel)
                 ]
             }
         where
