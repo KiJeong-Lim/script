@@ -17,18 +17,23 @@ import Control.Monad.Trans.State.Strict
 import Data.IORef
 
 runHOPU :: Labeling -> [Disagreement] -> IO (Maybe ([Disagreement], HopuSol))
-runHOPU labeling disagreements = do
-    changed <- newIORef False
-    let sol = HopuSol { _ChangedLabelingEnv = labeling, _MostGeneralUnifier = mempty }
-        loop disagreements = do
-            disagreements' <- simplify changed disagreements
-            has_changed <- liftIO (readIORef changed)
+runHOPU = go where
+    loop :: IORef HasChanged -> ([Disagreement], HopuSol) -> ExceptT IO ([Disagreement], HopuSol)
+    loop changed (disagreements, HopuSol labeling subst)
+        | null disagreements = return (disagreements, HopuSol labeling subst)
+        | otherwise = do
+            (disagreements', HopuSol labeling' subst') <- simplify changed disagreements labeling
+            let result = (disagreements', HopuSol labeling' (subst' <> subst))
+            has_changed <- readIORef changed
             if has_changed
                 then do
                     liftIO (writeIORef changed False)
-                    loop disagreements'
-                else return disagreements'
-    output <- runExceptT (runStateT (loop disagreements) sol)
-    case output of
-        Left err -> return Nothing
-        Right result -> return (Just result)
+                    loop changed result
+                else return result
+    go :: Labeling -> [Disagreement] -> IO (Maybe ([Disagreement], HopuSol))
+    go labeling disagreements = do
+        changed <- newIORef False
+        output <- runExceptT (loop changed (disagreements, HopuSol labeling mempty))
+        case output of
+            Left err -> return Nothing
+            Right result -> return (Just result)
