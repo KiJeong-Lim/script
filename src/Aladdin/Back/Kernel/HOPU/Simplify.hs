@@ -23,20 +23,9 @@ type SolutionChanged = Bool
 
 simplify :: IORef SolutionChanged -> [Disagreement] -> StateT HopuSol (ExceptT HopuFail IO) [Disagreement]
 simplify changed = loop where
-    insert' :: Eq a => a -> [a] -> [a]
-    insert' x xs
-        | null xs = x : xs
-        | x == head xs = xs
-        | otherwise = head xs : insert' x (tail xs)
     loop :: [Disagreement] -> StateT HopuSol (ExceptT HopuFail IO) [Disagreement]
     loop [] = return []
     loop (lhs :=?=: rhs : disagreements) = go (rewrite HNF lhs) (rewrite HNF rhs) where
-        solveNext :: StateT HopuSol (ExceptT HopuFail IO) [Disagreement]
-        solveNext = do
-            disagreements' <- loop disagreements
-            sol <- get
-            let zonk = rewrite HNF . flatten (_MostGeneralUnifier sol)
-            return (insert' (zonk lhs :=?=: zonk rhs) disagreements)
         go :: TermNode -> TermNode -> StateT HopuSol (ExceptT HopuFail IO) [Disagreement]
         go lhs rhs
             | (lambda1, lhs') <- viewNestedNAbs lhs
@@ -82,3 +71,9 @@ simplify changed = loop where
                         loop (applyBinding (_MostGeneralUnifier sol) disagreements)
             | otherwise
             = solveNext
+        solveNext :: StateT HopuSol (ExceptT HopuFail IO) [Disagreement]
+        solveNext = do
+            disagreements' <- loop disagreements
+            sol <- get
+            let zonk = flatten (_MostGeneralUnifier sol)
+            return (zonk lhs :=?=: zonk rhs : disagreements')
