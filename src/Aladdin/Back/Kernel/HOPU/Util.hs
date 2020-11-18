@@ -47,12 +47,11 @@ makeNestedNAbs n
     | n > 0 = makeNestedNAbs (n - 1) . NAbs
     | otherwise = undefined
 
-getNewLVar :: MonadIO m => Bool -> ScopeLevel -> StateT HopuSol m TermNode
+getNewLVar :: MonadIO m => Bool -> ScopeLevel -> StateT Labeling m TermNode
 getNewLVar isty label = do
     uni <- liftIO newUnique
     let sym = if isty then LV_ty_var uni else LV_Unique uni
-    sol <- get
-    put (sol { _ChangedLabelingEnv = enrollLabel sym label (_ChangedLabelingEnv sol) })
+    modify (enrollLabel sym label)
     return (mkLVar sym)
 
 isTypeLVar :: LogicVar -> Bool

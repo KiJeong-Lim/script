@@ -16,20 +16,24 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Data.Unique
 
-bind :: LogicVar -> TermNode -> [TermNode] -> Int -> StateT HopuSol (ExceptT HopuFail IO) TermNode
+bind :: LogicVar -> TermNode -> [TermNode] -> Int -> StateT Labeling (ExceptT HopuFail IO) (LVarSubst, TermNode)
 bind var = go . rewrite HNF where
-    go :: TermNode -> [TermNode] -> Int -> StateT HopuSol (ExceptT HopuFail IO) TermNode
+    go :: TermNode -> [TermNode] -> Int -> StateT Labeling (ExceptT HopuFail IO) (LVarSubst, TermNode)
     go rhs parameters lambda
         | (lambda', rhs') <- viewNestedNAbs rhs
         , lambda' > 0
         = do
-            lhs' <- go rhs' parameters (lambda + lambda')
-            return (makeNestedNAbs lambda' lhs')
+            (subst, lhs') <- go rhs' parameters (lambda + lambda')
+            return (subst, makeNestedNAbs lambda' lhs')
         | (rhs_head, rhs_tail) <- unfoldlNApp rhs
         , isRigid rhs_head
         = do
-            sol <- get
-            let labeling = _ChangedLabelingEnv sol
+            labeling <- get
+            let loop [] = return (mempty, [])
+                loop (rhs_tail_elements : rhs_tail) = do
+                    (subst, lhs_tail_elements) <- go (rewrite HNF rhs_tail_elements) parameters lambda
+                    (theta, lhs_tail) <- loop (applyBinding subst rhs_tail)
+                    return (theta <> subst, applyBinding theta lhs_tail_elements : lhs_tail)
                 get_lhs_head lhs_arguments
                     | NCon con <- rhs_head
                     , lookupLabel var labeling >= lookupLabel con labeling
@@ -38,22 +42,15 @@ bind var = go . rewrite HNF where
                     = return (mkNIdx (length lhs_arguments - idx))
                     | otherwise
                     = lift (throwE FlexRigidFail)
-                foldbind [] = return []
-                foldbind (rhs_tail_elements : rhs_tail) = do
-                    lhs_tail_elements <- bind var rhs_tail_elements parameters lambda
-                    sol <- get
-                    lhs_tail <- foldbind (applyBinding (_MostGeneralUnifier sol) rhs_tail)
-                    return (lhs_tail_elements : lhs_tail)
             lhs_head <- get_lhs_head ([ rewriteWithSusp param 0 lambda [] NF | param <- parameters ] ++ map mkNIdx [lambda, lambda - 1 .. 1])
-            lhs_tail <- foldbind rhs_tail
-            return (foldlNApp lhs_head lhs_tail)
+            (subst, lhs_tail) <- loop rhs_tail
+            return (subst, foldlNApp lhs_head lhs_tail)
         | (LVar var', rhs_tail) <- unfoldlNApp rhs
         = if var == var'
             then lift (throwE OccursCheckFail)
             else do
-                sol <- get
-                let labeling = _ChangedLabelingEnv sol
-                    isty = isTypeLVar var
+                labeling <- get
+                let isty = isTypeLVar var
                     lhs_arguments = [ rewriteWithSusp param 0 lambda [] NF | param <- parameters ] ++ map mkNIdx [lambda, lambda - 1 .. 1]
                     rhs_arguments = map (rewrite NF) rhs_tail
                     common_arguments = Set.toList (Set.fromList lhs_arguments `Set.intersection` Set.fromList rhs_arguments)
@@ -73,8 +70,9 @@ bind var = go . rewrite HNF where
                         common_head <- getNewLVar isty (lookupLabel var labeling)
                         case var' +-> makeNestedNAbs (length rhs_tail) (foldlNApp common_head (rhs_inner ++ rhs_outer)) of
                             Nothing -> lift (throwE OccursCheckFail)
-                            Just subst -> modify (zonkLVar subst)
-                        return (foldlNApp common_head (lhs_inner ++ lhs_outer))
+                            Just theta -> do
+                                modify (zonkLVar theta)
+                                return (theta, foldlNApp common_head (lhs_inner ++ lhs_outer))
                     else lift (throwE NotAPattern)
         | otherwise
         = lift (throwE BindFail)

@@ -17,17 +17,16 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Data.Unique
 
-mksubst :: LogicVar -> TermNode -> [TermNode] -> HopuSol -> ExceptT HopuFail IO (Maybe HopuSol)
-mksubst var rhs parameters sol = catchE (Just . snd <$> runStateT (go var (rewrite HNF rhs) parameters) sol) handleErr where
-    go :: LogicVar -> TermNode -> [TermNode] -> StateT HopuSol (ExceptT HopuFail IO) ()
+mksubst :: LogicVar -> TermNode -> [TermNode] -> Labeling -> ExceptT HopuFail IO (Maybe HopuSol)
+mksubst var rhs parameters labeling = catchE (Just . uncurry (flip HopuSol) <$> runStateT (go var (rewrite HNF rhs) parameters) labeling) handleErr where
+    go :: LogicVar -> TermNode -> [TermNode] -> StateT Labeling (ExceptT HopuFail IO) LVarSubst
     go var rhs parameters
         | (lambda, rhs') <- viewNestedNAbs rhs
         , (LVar var', rhs_tail) <- unfoldlNApp rhs'
         , var == var'
         = do
-            sol <- get
-            let labeling = _ChangedLabelingEnv sol
-                isty = isTypeLVar var
+            labeling <- get
+            let isty = isTypeLVar var
                 n = length parameters + lambda
                 lhs_arguments = [ rewriteWithSusp param 0 lambda [] NF | param <- parameters ] ++ map mkNIdx [lambda, lambda - 1 .. 1] 
                 rhs_arguments = map (rewrite NF) rhs_tail
@@ -37,20 +36,23 @@ mksubst var rhs parameters sol = catchE (Just . snd <$> runStateT (go var (rewri
                     common_head <- getNewLVar isty (lookupLabel var labeling)
                     case var' +-> makeNestedNAbs n (foldlNApp common_head common_arguments) of
                         Nothing -> lift (throwE OccursCheckFail)
-                        Just subst -> modify (zonkLVar subst)
+                        Just theta -> do
+                            modify (zonkLVar theta)
+                            return theta
                 else lift (throwE NotAPattern)
         | otherwise
         = do
-            sol <- get
-            let labeling = _ChangedLabelingEnv sol
-                n = length parameters
+            labeling <- get
+            let n = length parameters
                 lhs_arguments = map (rewrite NF) parameters
             if isPatternRespectTo var lhs_arguments labeling
                 then do
-                    lhs <- bind var rhs parameters 0
+                    (subst, lhs) <- bind var rhs parameters 0
                     case var +-> makeNestedNAbs n lhs of
                         Nothing -> lift (throwE OccursCheckFail)
-                        Just subst -> modify (zonkLVar subst)
+                        Just theta -> do
+                            modify (zonkLVar theta)
+                            return (theta <> subst)
                 else lift (throwE NotAPattern)
     handleErr :: HopuFail -> ExceptT HopuFail IO (Maybe HopuSol)
     handleErr NotAPattern = return Nothing

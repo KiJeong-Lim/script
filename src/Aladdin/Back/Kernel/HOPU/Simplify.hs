@@ -51,7 +51,7 @@ simplify changed = flip loop mempty where
                 else throwE RigidRigidFail
             | (LVar var, parameters) <- unfoldlNApp lhs
             = do
-                output <- mksubst var rhs parameters (HopuSol labeling mempty)
+                output <- mksubst var rhs parameters labeling
                 case output of
                     Nothing -> solveNext
                     Just (HopuSol labeling' subst') -> do
@@ -59,7 +59,7 @@ simplify changed = flip loop mempty where
                         loop (applyBinding subst' disagreements) (subst' <> subst) labeling'
             | (LVar var, parameters) <- unfoldlNApp rhs
             = do
-                output <- mksubst var lhs parameters (HopuSol labeling mempty)
+                output <- mksubst var lhs parameters labeling
                 case output of
                     Nothing -> solveNext
                     Just (HopuSol labeling' subst') -> do

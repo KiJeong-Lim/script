@@ -34,7 +34,7 @@ isPatternRespectTo v ts labeling = and
         ]
     ]
 
-down :: Monad m => [TermNode] -> [TermNode] -> StateT HopuSol (ExceptT HopuFail m) [TermNode]
+down :: Monad m => [TermNode] -> [TermNode] -> StateT Labeling (ExceptT HopuFail m) [TermNode]
 zs `down` ts = if downable then return indices else lift (throwE DownFail) where
     downable :: Bool
     downable = and
@@ -50,8 +50,8 @@ zs `down` ts = if downable then return indices else lift (throwE DownFail) where
         , i <- fromMaybeToList (z `List.elemIndex` ts)
         ]
 
-up :: Monad m => [TermNode] -> LogicVar -> StateT HopuSol (ExceptT HopuFail m) [TermNode]
-ts `up` y = if upable then findVisibles . _ChangedLabelingEnv <$> get else lift (throwE UpFail) where
+up :: Monad m => [TermNode] -> LogicVar -> StateT Labeling (ExceptT HopuFail m) [TermNode]
+ts `up` y = if upable then fmap findVisibles get else lift (throwE UpFail) where
     upable :: Bool
     upable = and
         [ areAllDistinct ts
