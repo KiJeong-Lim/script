@@ -32,7 +32,6 @@ instance Labelable Constant where
 instance Labelable LogicVar where
     enrollLabel atom level labeling = labeling { _VarLabel = Map.insert atom level (_VarLabel labeling) }
     updateLabel atom level labeling = labeling { _VarLabel = Map.insert atom level (_VarLabel labeling) }
-    lookupLabel (LV_Named name) = maybe 0 id . Map.lookup (LV_Named name) . _VarLabel
     lookupLabel atom = maybe maxBound id . Map.lookup atom . _VarLabel
 
 instance ZonkLVar Labeling where
@@ -66,9 +65,3 @@ fromMaybeToList (Just x) = [x]
 theDefaultLevel :: DataConstructor -> ScopeLevel
 theDefaultLevel (DC_Unique uni) = maxBound
 theDefaultLevel _ = 0
-
-theEmptyLabeling :: Labeling
-theEmptyLabeling = Labeling
-    { _ConLabel = Map.empty
-    , _VarLabel = Map.empty
-    }

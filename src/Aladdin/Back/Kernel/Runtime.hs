@@ -10,13 +10,18 @@ import Aladdin.Back.Kernel.Runtime.Util
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
-
-initialContext :: Context
-initialContext = Context
-    { _TotalVarBinding = mempty
-    , _CurrentLabeling = theEmptyLabeling
-    , _LeftConstraints = []
-    }
+import qualified Data.List as List
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 
 execRuntime :: RuntimeEnv -> [Fact] -> Goal -> ExceptT KernelErr IO Satisfied
-execRuntime env program query = runTransition env [(initialContext, [mkCell program 0 query])] []
+execRuntime env program query = runTransition env [(initialContext, [mkCell program 0 query])] [] where
+    initialContext :: Context
+    initialContext = Context
+        { _TotalVarBinding = mempty
+        , _CurrentLabeling = Labeling
+            { _ConLabel = Map.empty
+            , _VarLabel = Map.fromSet (const 0) (getFreeLVs query)
+            }
+        , _LeftConstraints = []
+        }
