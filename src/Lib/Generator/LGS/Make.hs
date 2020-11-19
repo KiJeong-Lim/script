@@ -98,28 +98,27 @@ makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedN
         go :: Identity NFA
         go = do
             let n = length regexes
-            (markeds, (numberOfQs, deltas)) <- flip runStateT (n + 1, Map.empty) $
-                fmap (Map.fromList . concat) $ sequence
-                    [ case regexes !! (i - 1) of
-                        (regex, Nothing) -> do
-                            (qi, qf) <- loop regex
-                            drawTransition ((0, Nothing), qi)
-                            drawTransition ((qf, Nothing), i)
-                            return []
-                        (regex1, Just regex2) -> do
-                            (qi1, qf1) <- loop regex1
-                            (qi2, qf2) <- loop regex2
-                            q <- getNewQ
-                            drawTransition ((0, Nothing), qi1)
-                            drawTransition ((qf1, Nothing), q)
-                            drawTransition ((q, Nothing), qi2)
-                            drawTransition ((qf2, Nothing), i)
-                            return [(i, q)]
-                    | i <- [1, 2 .. n]
-                    ]
+            (markeds, (numberOfQs, deltas)) <- flip runStateT (n + 1, Map.empty) $ fmap (Map.fromAscList . concat) $ sequence
+                [ case regexes !! (i - 1) of
+                    (regex, Nothing) -> do
+                        (qi, qf) <- loop regex
+                        drawTransition ((0, Nothing), qi)
+                        drawTransition ((qf, Nothing), i)
+                        return []
+                    (regex1, Just regex2) -> do
+                        (qi1, qf1) <- loop regex1
+                        (qi2, qf2) <- loop regex2
+                        q <- getNewQ
+                        drawTransition ((0, Nothing), qi1)
+                        drawTransition ((qf1, Nothing), q)
+                        drawTransition ((q, Nothing), qi2)
+                        drawTransition ((qf2, Nothing), i)
+                        return [(i, q)]
+                | i <- [1, 2 .. n]
+                ]
             return $ NFA 
                 { getInitialQOfNFA = 0
-                , getFinalQsOfNFA = Set.fromList [1, 2 .. n]
+                , getFinalQsOfNFA = Set.fromAscList [1, 2 .. n]
                 , getTransitionsOfNFA = deltas
                 , getMarkedQsOfNFA = markeds
                 }
@@ -165,7 +164,7 @@ makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedN
                         , (qs, q') <- Map.toList mapOldToNew'
                         , qf `Set.member` qs
                         ]
-                    , Map.fromList
+                    , Map.fromAscList
                         [ mkstrict
                             ( i
                             , Set.fromList
@@ -174,15 +173,15 @@ makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedN
                                 , q `Set.member` qs
                                 ]
                             )
-                        | (i, q) <- Map.toList markeds
+                        | (i, q) <- Map.toAscList markeds
                         ]
                     )
                 else loop mapOldToNew'
         go :: Identity DFA
         go = do
             let q0' = 0
-            ((qfs', markeds), deltas') <- runStateT (loop (Map.singleton (eClosure (Set.singleton q0)) q0')) Map.empty
-            return (DFA q0' qfs' deltas' markeds)
+            ((qfs', markeds'), deltas') <- runStateT (loop (Map.singleton (eClosure (Set.singleton q0)) q0')) Map.empty
+            return (DFA q0' qfs' deltas' markeds')
     makeMinimalDFA :: DFA -> DFA
     makeMinimalDFA (DFA q0 qfs deltas markeds) = minimal_dfa where
         reachables :: Set.Set ParserS
@@ -198,20 +197,20 @@ makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedN
         distinguishedPairs :: Set.Set (ParserS, ParserS)
         distinguishedPairs = go initialPairs where
             initialPairs :: Set.Set (ParserS, ParserS)
-            initialPairs = Set.fromList
+            initialPairs = Set.fromAscList
                 [ (q, q')
-                | q <- Set.toList reachables
-                , q' <- Set.toList reachables
+                | q <- Set.toAscList reachables
+                , q' <- Set.toAscList reachables
                 , Map.lookup q qfs /= Map.lookup q' qfs
                 ]
             go :: Set.Set (ParserS, ParserS) -> Set.Set (ParserS, ParserS)
             go pairs = if pairs == pairs' then pairs' else go pairs' where
                 pairs' :: Set.Set (ParserS, ParserS)
                 pairs' = foldr Set.union pairs
-                    [ Set.fromList
+                    [ Set.fromAscList
                         [ (q, q')
-                        | q <- Set.toList reachables
-                        , q' <- Set.toList reachables
+                        | q <- Set.toAscList reachables
+                        , q' <- Set.toAscList reachables
                         , (deltas Map.! (q, ch), deltas Map.! (q', ch)) `Set.member` pairs
                         ]
                     | ch <- Set.toList theCsUniv
@@ -225,12 +224,12 @@ makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedN
         minimal_dfa :: DFA
         minimal_dfa = DFA
             { getInitialQOfDFA = q0
-            , getFinalQsOfDFA = Map.fromList
+            , getFinalQsOfDFA = Map.fromAscList
                 [ (qf, label)
-                | (qf, label) <- Map.toList qfs
+                | (qf, label) <- Map.toAscList qfs
                 , qf `Set.member` winners
                 ]
-            , getTransitionsOfDFA = Map.fromList
+            , getTransitionsOfDFA = Map.fromAscList
                 [ mkstrict
                     ( (q, ch)
                     , head
@@ -239,10 +238,10 @@ makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedN
                         , not ((q', p) `Set.member` distinguishedPairs)
                         ]
                     )
-                | ((q, ch), p) <- Map.toList deltas
+                | ((q, ch), p) <- Map.toAscList deltas
                 , q `Set.member` winners
                 ]
-            , getMarkedQsOfDFA = Map.map (\qs -> Set.filter (\q -> q `Set.member` winners) qs) markeds
+            , getMarkedQsOfDFA = Map.map (Set.filter (\q -> q `Set.member` winners)) markeds
             }
     deleteDeadStates :: DFA -> DFA
     deleteDeadStates (DFA q0 qfs deltas markeds) = runIdentity go where
@@ -253,7 +252,7 @@ makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedN
             forM ps $ \p -> do
                 visiteds <- get
                 when (not (p `Set.member` visiteds)) $ do
-                    put (Set.insert p visiteds)
+                    modify (Set.insert p)
                     loop [ q' | (p', q') <- Set.toList edges, p == p' ]
             return ()
         go :: Identity DFA
@@ -262,11 +261,11 @@ makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedN
             return $ DFA
                 { getInitialQOfDFA = q0
                 , getFinalQsOfDFA = qfs
-                , getTransitionsOfDFA = Map.fromList
+                , getTransitionsOfDFA = Map.fromAscList
                     [ ((q, ch), p)
-                    | ((q, ch), p) <- Map.toList deltas
+                    | ((q, ch), p) <- Map.toAscList deltas
                     , q `Set.member` winners
                     , p `Set.member` winners
                     ]
-                , getMarkedQsOfDFA = Map.map (\qs -> Set.filter (\q -> q `Set.member` winners) qs) markeds
+                , getMarkedQsOfDFA = Map.map (Set.filter (\q -> q `Set.member` winners)) markeds
                 }
