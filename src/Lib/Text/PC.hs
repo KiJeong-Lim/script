@@ -1,14 +1,4 @@
-module Lib.Text.PC
-    ( PC
-    , (<?>)
-    , autoPC
-    , acceptPC
-    , consumePC
-    , matchPC
-    , eofPC
-    , regexPC
-    , runPC
-    ) where
+module Lib.Text.PC where
 
 import Control.Applicative
 import Control.Monad
@@ -26,9 +16,7 @@ infix 9 <?>
 type NameOfPC = String
 
 newtype PC val
-    = PC 
-        { unPC :: ParserBase ParserErr LocChr val
-        }
+    = PC { unPC :: ParserBase ParserErr LocChr val }
     deriving ()
 
 instance Functor PC where

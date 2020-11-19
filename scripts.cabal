@@ -19,7 +19,10 @@ library
         Lib.Algorithm.Sorting
         Lib.Base
         Lib.Text.PC
+        Lib.Text.PC.Expansion
         Lib.Text.Ppr
+        Lib.Generator.LGS
+        Lib.Generator.PGS
     other-modules:
         Lib.Text.PC.Base
         Lib.Text.PC.Check
