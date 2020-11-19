@@ -90,6 +90,7 @@ makeTermViewer = fst . runIdentity . uncurry (runStateT . format . erase) . runI
     buildCon :: Constant -> TermViewer
     buildCon (DC data_constructor)
         = case data_constructor of
+            DC_Named iden -> DConViewer iden []
             DC_ChrL chr -> ChrLViewer chr
             DC_NatL nat -> NatLViewer nat
             DC_Unique uni -> DConViewer (ID_Name (show (hashUnique uni))) []
@@ -98,6 +99,7 @@ makeTermViewer = fst . runIdentity . uncurry (runStateT . format . erase) . runI
                 Just iden -> DConViewer iden []
     buildCon (TC type_constructor)
         = case type_constructor of
+            TC_Named iden -> TConViewer iden []
             TC_Unique uni -> TConViewer (ID_Name (show (hashUnique uni))) []
             other -> case Map.lookup (show other) theReservedSymbols of
                 Nothing -> TConViewer (ID_Name (show other)) []

@@ -52,19 +52,15 @@ data PolyType
     = Forall [SmallId] (MonoType Int)
     deriving ()
 
+data TypeSynonym
+    = (TCon, [SmallId]) := (MonoType Int)
+    deriving ()
+
 data TermExpr dcon annot
     = IVar annot IVar
     | DCon annot dcon 
     | IApp annot (TermExpr dcon annot) (TermExpr dcon annot)
     | IAbs annot IVar (TermExpr dcon annot)
-    deriving ()
-
-data ProgramEnvironment kind_env type_env fact
-    = ProgramEnvironment
-        { _KindDecls :: kind_env
-        , _TypeDecls :: type_env
-        , _FactDecls :: [fact]
-        }
     deriving ()
 
 class HasSLoc a where
