@@ -176,7 +176,7 @@ getLALR1 (CFGrammar start terminals productions) = makeLALR1 where
                             , getGOTO' p left == Just q
                             ]
                         mapping' <- get
-                        put (Map.update (\_ -> Just (final, result')) (LR0Item lhs left right, q) mapping')
+                        put (Map.update (const (Just (final, result'))) (LR0Item lhs left right, q) mapping')
                         return result'
         makeLATable :: Identity [((ParserS, TSym), ProductionRule)]
         makeLATable = do
@@ -208,8 +208,8 @@ getLALR1 (CFGrammar start terminals productions) = makeLALR1 where
             (Just (Shift p), ra) -> case (Map.lookup t terminals', Map.lookup production productions') of
                 (Just (assoc, prec1), Just prec2)
                     | prec1 > prec2 -> Right getActionT
-                    | prec1 < prec2 -> Right (Map.update (\_ -> Just ra) (q, t) getActionT)
-                    | assoc == ALeft -> Right (Map.update (\_ -> Just ra) (q, t) getActionT)
+                    | prec1 < prec2 -> Right (Map.update (const (Just ra)) (q, t) getActionT)
+                    | assoc == ALeft -> Right (Map.update (const (Just ra)) (q, t) getActionT)
                     | assoc == ARight -> Right getActionT
                 _ -> Left $ strcat
                     [ strstr "cannot resolve conflict: {" . nl
@@ -221,9 +221,9 @@ getLALR1 (CFGrammar start terminals productions) = makeLALR1 where
             (Just (Reduce production'), ra) -> case (Map.lookup production' productions', Map.lookup production productions') of
                 (Just prec1, Just prec2)
                     | prec1 > prec2 -> Right getActionT
-                    | prec1 < prec2 -> Right (Map.update (\_ -> Just ra) (q, t) getActionT)
+                    | prec1 < prec2 -> Right (Map.update (const (Just ra)) (q, t) getActionT)
                 _ -> Left $ strcat
-                    [ strstr "cannot resolve conflict: {\n"
+                    [ strstr "cannot resolve conflict: {" . nl
                     , strstr "  (" . showsPrec 0 q . strstr ", " . makeOutput 0 (TS t) . strstr ") +-> " . makeOutput 0 (Reduce production) . nl
                     , strstr "  (" . showsPrec 0 q . strstr ", " . makeOutput 0 (TS t) . strstr ") +-> " . makeOutput 0 (Reduce production') . nl
                     , strstr "}" . nl
