@@ -16,9 +16,16 @@ library
     default-language: Haskell2010
     build-depends:  base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
     exposed-modules:
-        Lib.Tests
+        Lib.Algorithm.Sorting
         Lib.Base
+        Lib.Text.PC
+        Lib.Text.Ppr
     other-modules:
+        Lib.Text.PC.Base
+        Lib.Text.PC.Check
+        Lib.Text.PC.Loc
+        Lib.Text.PC.Regex
+        Lib.Text.Ppr.Viewer
 
 executable aladdin
     hs-source-dirs: src
@@ -26,6 +33,7 @@ executable aladdin
     default-language: Haskell2010
     build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, pretty-terminal >= 0.1.0.0
     other-modules:
+        Aladdin.Back.BackEnd
         Aladdin.Back.Base.TermNode.Read
         Aladdin.Back.Base.TermNode.Show
         Aladdin.Back.Base.TermNode.Util
@@ -47,6 +55,12 @@ executable aladdin
         Aladdin.Back.Kernel.HOPU
         Aladdin.Back.Kernel.KernelErr
         Aladdin.Back.Kernel.Runtime
+        Aladdin.Front.Base.ID
+        Aladdin.Front.Base.KindExpr
+        Aladdin.Front.Base.SLoc
+        Aladdin.Front.Base.TermExpr
+        Aladdin.Front.Base.TypeExpr
+        Aladdin.Front.FrontEnd
         Aladdin.Main
         Lib.Base
 

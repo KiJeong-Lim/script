@@ -31,17 +31,17 @@ instance Read TermNode where
         go 0 vs = mconcat
             [ do
                 v <- readIVar
-                matchPrefix "\\ "
+                consumeStr "\\ "
                 t <- go 0 (v : vs)
                 return (mkNAbs t)
             , go 1 vs
             ]
         go 1 vs = do
             t <- go 2 vs
-            ts <- many (matchPrefix " " *> go 2 vs)
+            ts <- many (consumeStr " " *> go 2 vs)
             return (List.foldl' mkNApp t ts)
         go _ vs = mconcat
             [ readCon
             , readVar vs
-            , matchPrefix "(" *> go 0 vs <* matchPrefix ")"
+            , consumeStr "(" *> go 0 vs <* consumeStr ")"
             ]

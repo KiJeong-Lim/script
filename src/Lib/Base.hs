@@ -55,8 +55,11 @@ acceptCharIf condition = PM go where
         | condition ch = return (ch, str)
     go _ = []
 
+consumeStr :: String -> PM ()
+consumeStr prefix = PM $ \str -> let n = length prefix in if take n str == prefix then return ((), drop n str) else []
+
 matchPrefix :: String -> PM ()
-matchPrefix prefix = PM $ \str -> let n = length prefix in if take n str == prefix then return ((), drop n str) else []
+matchPrefix prefix = PM $ \str -> let n = length prefix in if take n str == prefix then return ((), str) else []
 
 strstr :: String -> String -> String
 strstr str1 str2 = str1 ++ str2
