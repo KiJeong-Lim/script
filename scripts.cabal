@@ -46,6 +46,7 @@ executable aladdin
     other-modules:
         Aladdin.Back.BackEnd
         Aladdin.Back.Base.Constant
+        Aladdin.Back.Base.Identifier
         Aladdin.Back.Base.Labeling
         Aladdin.Back.Base.TermNode
         Aladdin.Back.Base.TermNode.Read
@@ -66,12 +67,7 @@ executable aladdin
         Aladdin.Back.Kernel.Runtime.Instantiation
         Aladdin.Back.Kernel.Runtime.Transition
         Aladdin.Back.Kernel.Runtime.Util
-        Aladdin.Front.Base.ID
-        Aladdin.Front.Base.KindExpr
-        Aladdin.Front.Base.SLoc
-        Aladdin.Front.Base.TermExpr
-        Aladdin.Front.Base.TypeExpr
-        Aladdin.Front.FrontEnd
+        Aladdin.Front.Header
         Aladdin.Main
         Lib.Base
 

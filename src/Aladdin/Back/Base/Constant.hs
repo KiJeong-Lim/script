@@ -1,9 +1,8 @@
 module Aladdin.Back.Base.Constant where
 
+import Aladdin.Back.Base.Identifier
 import Data.Unique
 import Lib.Base
-
-type Name = String
 
 data LogicalOperator
     = LO_ty_pi
@@ -19,7 +18,7 @@ data LogicalOperator
     deriving (Eq, Ord)
 
 data DataConstructor
-    = DC_Named Name
+    = DC_Named Identifier
     | DC_Unique Unique
     | DC_ChrL Char
     | DC_NatL Integer
@@ -34,7 +33,7 @@ data TypeConstructor
     | TC_o
     | TC_list
     | TC_char
-    | TC_Named Name
+    | TC_Named Identifier
     | TC_Unique Unique
     deriving (Eq, Ord)
 
@@ -64,7 +63,7 @@ instance Show LogicalOperator where
 
 instance Show DataConstructor where
     showList = undefined
-    showsPrec prec (DC_Named name) = strstr name
+    showsPrec prec (DC_Named iden) = showsPrec 0 iden
     showsPrec prec (DC_Unique uni) = strstr "dcon_" . showsPrec 0 (hashUnique uni)
     showsPrec prec (DC_ChrL chr) = showsPrec 0 chr
     showsPrec prec (DC_NatL nat) = showsPrec 0 nat
@@ -79,7 +78,7 @@ instance Show TypeConstructor where
     showsPrec prec (TC_o) = strstr "__o"
     showsPrec prec (TC_list) = strstr "__list"
     showsPrec prec (TC_char) = strstr "__char"
-    showsPrec prec (TC_Named name) = strstr name
+    showsPrec prec (TC_Named iden) = showsPrec 0 iden
     showsPrec prec (TC_Unique uni) = strstr "tcon_" . showsPrec 0 (hashUnique uni)
 
 instance Show Constant where

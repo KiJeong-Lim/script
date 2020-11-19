@@ -1,6 +1,7 @@
 module Aladdin.Back.Base.TermNode.Read where
 
 import Aladdin.Back.Base.Constant
+import Aladdin.Back.Base.Identifier
 import Aladdin.Back.Base.TermNode
 import Control.Applicative
 import qualified Data.List as List
@@ -26,7 +27,7 @@ instance Read TermNode where
             ch1 <- acceptCharIf (\ch -> ch `elem` ['a' .. 'z'])
             str1 <- many (acceptCharIf (\ch -> ch `elem` ['a' .. 'z'] || ch `elem` ['0' .. '9'] || ch `elem` ['_']))
             let name1 = ch1 : str1
-            return (mkNCon (DC_Named name1))
+            return (mkNCon (DC_Named (ID_Name name1)))
         go :: Precedence -> [String] -> PM TermNode
         go 0 vs = mconcat
             [ do

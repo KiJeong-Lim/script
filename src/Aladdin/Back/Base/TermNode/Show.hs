@@ -1,6 +1,7 @@
 module Aladdin.Back.Base.TermNode.Show where
 
 import Aladdin.Back.Base.Constant
+import Aladdin.Back.Base.Identifier
 import Aladdin.Back.Base.TermNode
 import Aladdin.Back.Base.TermNode.Util
 import Control.Monad.Trans.State.Strict
@@ -8,18 +9,6 @@ import Data.Functor.Identity
 import Data.Unique
 import qualified Data.Map.Strict as Map
 import Lib.Base
-
-data Associativity
-    = A_left
-    | A_right
-    | A_none
-    deriving (Eq, Ord)
-
-data Identifier
-    = ID_InfixOperator Associativity Precedence Name
-    | ID_PrefixOperator Precedence Name
-    | ID_Name Name
-    deriving ()
 
 data TermViewer
     = IVarViewer Int
@@ -35,20 +24,6 @@ data TermViewer
     | TConViewer Identifier [TermViewer]
     | TAppViewer TermViewer TermViewer
     deriving ()
-
-instance Show Associativity where
-    showsPrec prec (A_left) = strstr "left-assoc"
-    showsPrec prec (A_right) = strstr "right-assoc"
-    showsPrec prec (A_none) = strstr "non-assoc"
-
-instance Eq Identifier where
-    id1 == id2 = getNameOfIdentifier id1 == getNameOfIdentifier id2
-
-instance Ord Identifier where
-    id1 `compare` id2 = getNameOfIdentifier id1 `compare` getNameOfIdentifier id2
-
-instance Show Identifier where
-    showsPrec prec = strstr . getNameOfIdentifier
 
 instance Show TermViewer where
     showList viewers = strstr "[" . ppunc ", " (map (showsPrec 6) viewers) . strstr "]"
@@ -81,19 +56,6 @@ instance Show TermViewer where
 instance Show TermNode where
     showList = ppunc "\n" . map (showsPrec 0)
     showsPrec prec = showsPrec prec . makeTermViewer
-
-getNameOfIdentifier :: Identifier -> String
-getNameOfIdentifier (ID_InfixOperator _ _ name) = name
-getNameOfIdentifier (ID_PrefixOperator _ name) = name
-getNameOfIdentifier (ID_Name name) = name
-
-isInfixOp :: Identifier -> Bool
-isInfixOp (ID_InfixOperator _ _ _) = True
-isInfixOp _ = False
-
-isPrefixOp :: Identifier -> Bool
-isPrefixOp (ID_PrefixOperator _ _) = True
-isPrefixOp _ = False
 
 viewRep :: Show a => Identifier -> a -> Bool
 viewRep iden x = maybe False (\iden' -> iden == iden') (Map.lookup (show x) theReservedSymbols)

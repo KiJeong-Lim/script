@@ -1,6 +1,7 @@
 module Aladdin.Back.Base.TermNode where
 
 import Aladdin.Back.Base.Constant
+import Aladdin.Back.Base.Identifier
 import Data.Unique
 import Lib.Base
 
