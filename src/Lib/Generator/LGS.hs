@@ -26,5 +26,5 @@ runLGS dir = do
             Left err -> putStrLn err
             Right delta -> do
                 writeFile (dir ++ ".hs") (delta "")
-                putStrLn "the lexer is generated."
+                putStrLn "the lexer has been generated."
                 return ()

@@ -94,6 +94,12 @@ appendPB = go where
 mkPB :: ([chr] -> [(val, [chr])]) -> err -> ParserBase err chr val
 mkPB _ReadS err1 = PAct $ \str0 -> PAlt err1 [ (PVal val1, str1) | (val1, str1) <- _ReadS str0 ]
 
+negPB :: Monoid err => ParserBase err chr val -> ParserBase err chr ()
+negPB (PAlt err1 []) = pure ()
+negPB p1 = PAct $ \str0 -> case unPB p1 str0 of
+    Left err1 -> PAlt mempty [(PVal (), str0)]
+    Right alts1 -> PAlt mempty []
+
 runPB :: Monoid err => ParserBase err chr val -> [chr] -> Either (err, [chr]) [(val, [chr])]
 runPB = flip go (mempty, []) where
     findShortest :: [(err, [chr])] -> (err, [chr])

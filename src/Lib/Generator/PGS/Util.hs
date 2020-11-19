@@ -8,8 +8,9 @@ import Data.Functor.Identity
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import Lib.Base
 
-type Precedence = Int
+type ErrMsg = String
 
 type ProductionRule = (NSym, [Sym])
 
@@ -131,7 +132,9 @@ data YBlock
     deriving (Show)
 
 instance Semigroup TerminalSet where
-    ts1 <> ts2 = if Nothing `Set.member` unTerminalSet ts1 then TerminalSet (Set.delete Nothing (unTerminalSet ts1) `Set.union` unTerminalSet ts2) else ts1
+    ts1 <> ts2
+        | Nothing `Set.member` unTerminalSet ts1 = TerminalSet (Set.delete Nothing (unTerminalSet ts1) `Set.union` unTerminalSet ts2)
+        | otherwise = ts1
 
 instance Monoid TerminalSet where
     mempty = TerminalSet (Set.singleton Nothing)

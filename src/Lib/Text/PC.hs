@@ -90,6 +90,9 @@ eofPC = PC go where
 regexPC :: RegExRep -> PC String
 regexPC = PC . parserOfRegularExpression
 
+negPC :: PC a -> PC ()
+negPC = PC . negPB . unPC
+
 runPC :: PC val -> Src -> Either ErrMsg val
 runPC p str0 = case runPB (unPC p) (addLoc str0) of
     Left pair -> Left (mkErrMsg str0 pair)

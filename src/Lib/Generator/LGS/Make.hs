@@ -39,7 +39,7 @@ makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedN
             (maximumOfQs, deltas) <- get
             case Map.lookup key deltas of
                 Nothing -> put (maximumOfQs, Map.insert key (Set.singleton q) deltas)
-                Just qs -> put (maximumOfQs, Map.update (\_ -> Just (Set.insert q qs)) key deltas)
+                Just qs -> put (maximumOfQs, Map.update (const (Just (Set.insert q qs))) key deltas)
         loop :: RegEx -> StateT (ParserS, Map.Map (ParserS, Maybe Char) (Set.Set ParserS)) Identity (ParserS, ParserS)
         loop (ReUnion regex1 regex2) = do
             (qi1, qf1) <- loop regex1
