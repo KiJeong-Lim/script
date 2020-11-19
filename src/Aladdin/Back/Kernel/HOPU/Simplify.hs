@@ -38,11 +38,11 @@ simplify changed = flip loop mempty where
             | (lambda1, lhs') <- viewNestedNAbs lhs
             , (rhs_head, rhs_tail) <- unfoldlNApp rhs
             , lambda1 > 0 && isRigid rhs_head
-            = go lhs' (foldlNApp rhs (map mkNIdx [lambda1, lambda1 - 1 .. 1]))
+            = go lhs' (foldlNApp (rewriteWithSusp rhs_head 0 lambda1 [] HNF) ([ mkSusp rhs_tail_element 0 lambda1 [] | rhs_tail_element <- rhs_tail ] ++ map mkNIdx [lambda1, lambda1 - 1 .. 1]))
             | (lhs_head, lhs_tail) <- unfoldlNApp lhs
             , (lambda2, rhs') <- viewNestedNAbs rhs
             , isRigid lhs_head && lambda2 > 0
-            = go (foldlNApp lhs (map mkNIdx [lambda2, lambda2 - 1 .. 1])) rhs'
+            = go (foldlNApp (rewriteWithSusp lhs_head 0 lambda2 [] HNF) ([ mkSusp lhs_tail_element 0 lambda2 [] | lhs_tail_element <- lhs_tail ] ++ map mkNIdx [lambda2, lambda2 - 1 .. 1])) rhs'
             | (lhs_head, lhs_tail) <- unfoldlNApp lhs
             , (rhs_head, rhs_tail) <- unfoldlNApp rhs
             , isRigid lhs_head && isRigid rhs_head
