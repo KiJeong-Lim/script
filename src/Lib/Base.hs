@@ -11,6 +11,9 @@ newtype PM output
     = PM { runPM :: String -> [(output, String)] }
     deriving ()
 
+class Outputable a where
+    makeOutput :: Int -> a -> String -> String
+
 instance Functor PM where
     fmap a2b fa = PM $ \str -> [ (a2b a, str') | (a, str') <- fa `runPM` str ]
     a <$ fb = PM $ \str -> [ (a, str') | (b, str') <- fb `runPM` str ]
@@ -71,25 +74,25 @@ nl :: String -> String
 nl str = "\n" ++ str
 
 pindent :: Indentation -> String -> String
-pindent space str1
-    | space < 0 = str1
-    | otherwise = replicate space ' ' ++ str1
+pindent space str1 = if space < 0 then str1 else replicate space ' ' ++ str1
 
 plist :: Indentation -> [String -> String] -> String -> String
 plist space [] = strstr "[]"
 plist space (delta : deltas) = nl . pindent space . strstr "[ " . loop delta deltas where
     loop :: (String -> String) -> [String -> String] -> String -> String
-    loop delta1 [] = strcat
-        [ delta . nl
-        , pindent space . strstr "]"
-        ]
-    loop delta1 (delta2 : deltas) = strcat
-        [ delta1 . nl
-        , pindent space . strstr ", " . loop delta2 deltas
-        ]
+    loop delta1 [] = delta . nl . pindent space . strstr "]"
+    loop delta1 (delta2 : deltas) = delta1 . nl . pindent space . strstr ", " . loop delta2 deltas
 
 ppunc :: String -> [String -> String] -> String -> String
-ppunc str = go where
-    go :: [String -> String] -> String -> String
-    go [] = id
-    go (delta : deltas) = delta . strstr str . go deltas
+ppunc str = foldr (\delta -> \acc -> delta . strstr str . acc) id
+
+split' :: (a -> a -> Bool) -> [a] -> [[a]]
+split' cond [] = []
+split' cond (x1 : x2 : xs)
+    | cond x1 x2 = case split' cond (x2 : xs) of
+        [] -> error "unreachable!"
+        y : ys -> (x1 : y) : ys
+split' cond (x1 : xs) = [x1] : split' cond xs
+
+viewOutput :: Outputable a => a -> String
+viewOutput = flip (makeOutput 0) ""
