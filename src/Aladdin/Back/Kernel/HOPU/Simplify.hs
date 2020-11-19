@@ -67,7 +67,8 @@ simplify changed = flip loop mempty where
                         loop (applyBinding subst' disagreements) (subst' <> subst) labeling'
             | otherwise
             = solveNext
-        solveNext :: ExceptT HopuFail IO ([Disagreement], HopuSol)
-        solveNext = do
-            (disagreements', HopuSol labeling' subst') <- loop disagreements mempty labeling
-            return (applyBinding subst' (lhs :=?=: rhs) : disagreements', HopuSol labeling' (subst' <> subst))
+            where
+                solveNext :: ExceptT HopuFail IO ([Disagreement], HopuSol)
+                solveNext = do
+                    (disagreements', HopuSol labeling' subst') <- loop disagreements mempty labeling
+                    return (applyBinding subst' (lhs :=?=: rhs) : disagreements', HopuSol labeling' (subst' <> subst))
