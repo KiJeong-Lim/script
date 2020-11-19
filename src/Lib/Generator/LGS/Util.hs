@@ -9,6 +9,8 @@ import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 
+type ErrMsg = String
+
 type ParserS = Int
 
 type CharSetVar = String
