@@ -35,17 +35,13 @@ addLoc = go 1 1 where
 mkErrMsg :: Src -> (ParserErr, LocStr) -> ErrMsg
 mkErrMsg src (err, lstr) = renderDoc err_msg where
     splitBy :: Char -> String -> [String]
-    splitBy ch = go . loop where
+    splitBy ch = loop where
         loop :: String -> [String]
         loop [] = [""]
         loop (ch1 : str1)
             | ch == ch1 = "" : loop str1
             | otherwise = case loop str1 of
                 str : strs -> (ch1 : str) : strs
-        go :: [String] -> [String]
-        go [""] = [""]
-        go ("" : strs) = strs
-        go strs = strs
     stuck_row :: Row
     stuck_row = case lstr of
         [] -> length (filter (\lch -> snd lch == '\n') lstr) + 1
@@ -58,11 +54,11 @@ mkErrMsg src (err, lstr) = renderDoc err_msg where
         ((r, c), _) : _ -> c
     err_msg :: Doc
     err_msg = vconcat
-        [ blue (text "parsing error at " <> pprint 0 stuck_row <> text ":" <> pprint 0 stuck_col <> text ".")
+        [ blue (text "parsing error at " <> putDoc 0 stuck_row <> text ":" <> putDoc 0 stuck_col <> text ".")
         , hconcat
             [ vconcat
                 [ text ""
-                , blue (text " " <> pprint 0 stuck_row <> text " ")
+                , blue (text " " <> putDoc 0 stuck_row <> text " ")
                 , text ""
                 ]
             , blue mkBeam

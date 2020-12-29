@@ -39,9 +39,11 @@ acceptQuote = PC go where
                 (quote, lstr1) <- loop (drop 1 lstr0)
                 return (ch : quote, lstr1)
     go :: ParserBase ParserErr LocChr String
-    go = PAct $ \lstr0 -> case loop lstr0 of
-        Left lstr1 -> PAlt (Set.singleton "acceptQuote") []
-        Right (quote, lstr1) -> PAlt mempty [(PVal quote, lstr1)]
+    go = PAct $ \lstr0 -> case lstr0 of
+        (_, '\"') : lstr1 -> case loop lstr1 of
+            Left lstr2 -> PAlt (Set.singleton "`acceptQuote\' failed.") []
+            Right (quote, lstr2) -> PAlt mempty [(PVal quote, lstr2)]
+        lstr1 -> PAlt (Set.singleton "`acceptQuote\' failed.") []
 
 skipWhite :: PC ()
 skipWhite = PC go where

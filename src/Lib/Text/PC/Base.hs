@@ -32,17 +32,10 @@ instance Monoid err => Alternative (ParserBase err chr) where
 instance Monoid err => MonadPlus (ParserBase err chr) where
 
 instance Monoid err => Semigroup (ParserBase err chr val) where
-    (<>) = go where
-        go :: Monoid err => ParserBase err chr val -> ParserBase err chr val -> ParserBase err chr val
-        go (PAlt err1 []) p2 = p2
-        go p1 p2 = PAct $ \str0 -> case unPB p1 str0 of
-            Left err1 -> case unPB p2 str0 of
-                Left err2 -> PAlt (err1 <> err2) []
-                Right alts2 -> PAlt mempty alts2
-            Right alts1 -> PAlt mempty alts1
+    (<>) = (<|>)
 
 instance Monoid err => Monoid (ParserBase err chr val) where
-    mempty = emptyPB
+    mempty = empty
 
 instance (Show err, Show chr, Show val) => Show (ParserBase err chr val) where
     show = flip (showsPrec 0) ""
@@ -103,7 +96,7 @@ negPB p1 = PAct $ \str0 -> case unPB p1 str0 of
 runPB :: Monoid err => ParserBase err chr val -> [chr] -> Either (err, [chr]) [(val, [chr])]
 runPB = flip go (mempty, []) where
     findShortest :: [(err, [chr])] -> (err, [chr])
-    findShortest = head . sortByMerging (\x1 -> \x2 -> length (snd x1) < length (snd x2))
+    findShortest = head . sortByMerging (\x1 -> \x2 -> length (snd x1) <= length (snd x2))
     go :: Monoid err => ParserBase err chr val -> (err, [chr]) -> [chr] -> Either (err, [chr]) [(val, [chr])]
     go (PVal val1) (err0, es0) str0 = Right [(val1, str0)]
     go (PAlt err1 alts1) (err0, es0) str0

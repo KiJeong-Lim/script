@@ -2,6 +2,7 @@ module Aladdin.Back.Base.TermNode.Util where
 
 import Aladdin.Back.Base.Constant
 import Aladdin.Back.Base.TermNode
+import Aladdin.Front.Header
 import qualified Data.List as List
 
 data ReduceOption
@@ -52,7 +53,7 @@ unfoldlNApp = flip go [] where
         | n == 0 = (mkNCon (DC_NatL 0), ts)
         | n > 0 =
             let n' = n - 1
-            in n' `seq` (mkNCon DC_succ, mkNCon (DC_NatL n') : ts)
+            in n' `seq` (mkNCon DC_Succ, mkNCon (DC_NatL n') : ts)
         | otherwise = error "`unfoldlNApp\': negative integer"
     go (NApp t1 t2) ts = go t1 (t2 : ts)
     go t ts = (t, ts)

@@ -73,9 +73,9 @@ parserOfRegularExpression regex_rep = go maybeRegEx where
             _ -> Nothing
     runCharSet :: CharSet -> Char -> Bool
     runCharSet CsUniv ch = True
-    runCharSet (CsUnion chs1 chs2) ch = runCharSet chs1 ch || runCharSet chs1 ch
-    runCharSet (CsDiff chs1 chs2) ch = runCharSet chs1 ch && not (runCharSet chs2 ch)
-    runCharSet (CsEnum chs1 chs2) ch = chs1 <= ch && ch <= chs2
+    runCharSet (CsUnion chs1 chs2) ch = runCharSet chs1 ch || runCharSet chs2 ch
+    runCharSet (CsDiff ch1 ch2) ch = runCharSet ch1 ch && not (runCharSet ch2 ch)
+    runCharSet (CsEnum ch1 ch2) ch = ch1 <= ch && ch <= ch2
     runCharSet (CsSingle ch1) ch = ch == ch1
     runRegEx :: RegEx -> LocStr -> [(String, LocStr)]
     runRegEx (ReCharSet chs) lstr0 = case lstr0 of
@@ -94,5 +94,5 @@ parserOfRegularExpression regex_rep = go maybeRegEx where
     go :: Maybe RegEx -> ParserBase ParserErr LocChr String
     go Nothing = error ("wrong regex: " ++ show regex_rep)
     go (Just regex) = PAct $ \lstr0 -> case sortByMerging orderResult (runRegEx regex lstr0) of
-        [] -> PAlt (Set.singleton ("regexPM " ++ show regex_rep)) []
+        [] -> PAlt (Set.singleton ("`regexPM " ++ show regex_rep ++ "\' failed.")) []
         (str1, lstr1) : _ -> PAlt Set.empty [(PVal str1, lstr1)]

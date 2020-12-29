@@ -4,6 +4,7 @@ import Aladdin.Back.Base.Constant
 import Aladdin.Back.Base.TermNode
 import Aladdin.Back.Base.TermNode.Util
 import Aladdin.Back.Base.VarBinding
+import Aladdin.Front.Header
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -25,7 +26,6 @@ class Labelable atom where
 instance Labelable Constant where
     enrollLabel atom level labeling = labeling { _ConLabel = Map.insert atom level (_ConLabel labeling) }
     updateLabel atom level labeling = labeling { _ConLabel = Map.update (const (Just level)) atom (_ConLabel labeling) }
-    lookupLabel (LO logical_operator) = const 0
     lookupLabel (DC data_constructor) = maybe (theDefaultLevel data_constructor) id . Map.lookup (DC data_constructor) . _ConLabel
     lookupLabel (TC type_constructor) = const 0
 

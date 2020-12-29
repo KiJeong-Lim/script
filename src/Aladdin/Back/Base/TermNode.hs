@@ -1,8 +1,7 @@
 module Aladdin.Back.Base.TermNode where
 
 import Aladdin.Back.Base.Constant
-import Aladdin.Back.Base.Identifier
-import Data.Unique
+import Aladdin.Front.Header
 import Lib.Base
 
 type DeBruijn = Int
@@ -14,7 +13,7 @@ type IsTypeLevel = Bool
 data LogicVar
     = LV_ty_var Unique
     | LV_Unique Unique
-    | LV_Named Name
+    | LV_Named LargeId
     deriving (Eq, Ord)
 
 data TermNode
@@ -37,9 +36,8 @@ data SuspItem
     deriving (Eq, Ord)
 
 instance Show LogicVar where
-    showList = undefined
-    showsPrec prec (LV_ty_var uni) = strstr "TVar_" . showsPrec prec (hashUnique uni)
-    showsPrec prec (LV_Unique uni) = strstr "LVar_" . showsPrec prec (hashUnique uni)
+    showsPrec prec (LV_ty_var uni) = strstr "TVar_" . showsPrec prec (unUnique uni)
+    showsPrec prec (LV_Unique uni) = strstr "LVar_" . showsPrec prec (unUnique uni)
     showsPrec prec (LV_Named name) = strstr name
 
 mkLVar :: LogicVar -> TermNode
@@ -54,7 +52,7 @@ mkNIdx :: DeBruijn -> TermNode
 mkNIdx i = i `seq` NIdx i
 
 mkNApp :: TermNode -> TermNode -> TermNode
-mkNApp (NCon (DC (DC_succ))) (NCon (DC (DC_NatL n))) =
+mkNApp (NCon (DC (DC_Succ))) (NCon (DC (DC_NatL n))) =
     let n' = n + 1 
     in n' `seq` mkNCon (DC_NatL n')
 mkNApp t1 t2 = t1 `seq` t2 `seq` NApp t1 t2
