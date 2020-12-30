@@ -272,28 +272,28 @@ makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedN
                 }
 
 makeStateRegexTable :: DFA -> Map.Map ParserS RegEx
-makeStateRegexTable (DFA q0 qfs delta markeds) = Map.fromList [ (q, makeClosure (length qs) Map.! (q0, q)) | q <- qs ] where
-    theSetOfAllStatesInGraph :: Set.Set ParserS
-    theSetOfAllStatesInGraph = Set.unions
-        [ Set.singleton q0
-        , Set.fromList [ qf | (_, qf) <- Map.toAscList qfs ]
-        , Set.unions [ Set.fromList [q, p] | ((q, ch), p) <- Map.toAscList delta ]
-        ]
+makeStateRegexTable (DFA q0 qfs delta markeds) = Map.fromList [ mkstrict (q, reduceRegEx (makeClosure (length qs) Map.! (q0, q))) | q <- qs ] where
+    mkstrict :: (a, b) -> (a, b)
+    mkstrict pair = snd pair `seq` pair
     qs :: [ParserS]
-    qs = Set.toAscList theSetOfAllStatesInGraph
+    qs = Set.toAscList theSetOfAllStatesInGraph where
+        theSetOfAllStatesInGraph :: Set.Set ParserS
+        theSetOfAllStatesInGraph = Set.unions
+            [ Set.singleton q0
+            , Set.fromList [ qf | (_, qf) <- Map.toAscList qfs ]
+            , Set.unions [ Set.fromList [q, p] | ((q, ch), p) <- Map.toAscList delta ]
+            ]
     makeClosure :: Int -> Map.Map (ParserS, ParserS) RegEx
     makeClosure n
         | n < 0 = undefined
         | n == 0 = init
-        | n > 0 = let prev = makeClosure (n - 1) in prev `seq` loop (qs !! (n - 1)) prev
+        | n > 0 = loop (qs !! (n - 1)) (makeClosure (n - 1))
         where
-            mkstrict :: (a, b) -> (a, b)
-            mkstrict pair = snd pair `seq` pair
             init :: Map.Map (ParserS, ParserS) RegEx
             init = Map.fromList
                 [ mkstrict
                     ( (q1, q2)
-                    , reduceRegEx (foldr ReUnion (if q1 == q2 then ReWord [] else ReZero) [ ReWord [ch] | ch <- Set.toList theCsUniv, Map.lookup (q1, ch) delta == Just q2 ])
+                    , foldr ReUnion (if q1 == q2 then ReWord [] else ReZero) [ ReWord [ch] | ch <- Set.toList theCsUniv, Map.lookup (q1, ch) delta == Just q2 ]
                     )
                 | q1 <- qs
                 , q2 <- qs
@@ -302,7 +302,7 @@ makeStateRegexTable (DFA q0 qfs delta markeds) = Map.fromList [ (q, makeClosure 
             loop q prev = Map.fromList
                 [ mkstrict
                     ( (q1, q2)
-                    , reduceRegEx (ReUnion (prev Map.! (q1, q2)) (ReConcat (prev Map.! (q1, q)) (ReConcat (ReStar (prev Map.! (q, q))) (prev Map.! (q, q2)))))
+                    , ReUnion (prev Map.! (q1, q2)) (ReConcat (prev Map.! (q1, q)) (ReConcat (ReStar (prev Map.! (q, q))) (prev Map.! (q, q2))))
                     )
                 | q1 <- qs
                 , q2 <- qs
