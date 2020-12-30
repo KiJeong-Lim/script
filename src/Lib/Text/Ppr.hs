@@ -14,12 +14,12 @@ module Lib.Text.Ppr
     , indent
     , putDoc
     , renderDoc
+    , pprintString
     ) where
 
+import Lib.Base
 import Lib.Text.Ppr.Viewer
 import System.Console.Pretty
-
-type Precedence = Int
 
 data Doc
     = DE
@@ -149,3 +149,13 @@ renderDoc = render . toViewer . reduce where
     toViewer DB = mkVB
     toViewer (DV doc1 doc2) = mkVV (toViewer doc1) (toViewer doc2)
     toViewer (DH doc1 doc2) = mkVH (toViewer doc1) (toViewer doc2)
+
+pprintString :: String -> String -> String
+pprintString str = strstr "\"" . strcat (map go str) . strstr "\"" where
+    go :: Char -> String -> String
+    go '\n' = strstr "\\n"
+    go '\t' = strstr "\\t"
+    go '\\' = strstr "\\\\"
+    go '\"' = strstr "\\\""
+    go '\'' = strstr "\\\'"
+    go ch = strstr [ch]
