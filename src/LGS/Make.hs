@@ -271,8 +271,11 @@ makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedN
                 , getMarkedQsOfDFA = Map.map (Set.filter (\q -> q `Set.member` winners)) markeds
                 }
 
+showProgress n x = x `seq` (show n `trace` x)
+showTrace x = show x `trace` x
+
 makeStateRegexTable :: DFA -> Map.Map ParserS RegEx
-makeStateRegexTable (DFA q0 qfs delta markeds) = Map.fromList [ mkstrict (q, reduceRegEx (makeClosure (length qs) Map.! (q0, q))) | q <- qs ] where
+makeStateRegexTable (DFA q0 qfs delta markeds) = Map.fromList [ mkstrict (q, showTrace $ reduceRegEx (theResultTable `lookTable` (q0, q))) | q <- qs ] where
     mkstrict :: (a, b) -> (a, b)
     mkstrict pair = snd pair `seq` pair
     qs :: [ParserS]
@@ -283,52 +286,80 @@ makeStateRegexTable (DFA q0 qfs delta markeds) = Map.fromList [ mkstrict (q, red
             , Set.fromList [ qf | (_, qf) <- Map.toAscList qfs ]
             , Set.unions [ Set.fromList [q, p] | ((q, ch), p) <- Map.toAscList delta ]
             ]
+    makeRegExFromCharSet :: (Char -> Bool) -> RegEx
+    makeRegExFromCharSet cond
+        = case List.partition cond (Set.toDescList theCsUniv) of
+            (yess, nos)
+                | length nos < 5 -> ReCharSet (List.foldl' CsDiff CsUniv (map CsSingle nos))
+                | otherwise -> foldr ReUnion ReZero
+                    [ case pair of
+                        (ch1, ch2) -> if ch1 == ch2 then ReWord [ch1] else ReCharSet (CsEnum ch1 ch2)
+                    | pair <- foldr loop [] yess
+                    ]
+        where
+            loop :: Char -> [(Char, Char)] -> [(Char, Char)]
+            loop ch0 pairs0 = case List.partition (\pair -> snd pair == pred ch0) pairs0 of
+                ([], pairs1) -> (ch0, ch0) : pairs1
+                ([(ch1, ch2)], pairs1) -> (ch1, ch0) : pairs1
+    lookTable :: Map.Map (ParserS, ParserS) RegEx -> (ParserS, ParserS) -> RegEx
+    lookTable table = maybe ReZero id . flip Map.lookup table
     makeClosure :: Int -> Map.Map (ParserS, ParserS) RegEx
     makeClosure n
         | n < 0 = undefined
-        | n == 0 = init
-        | n > 0 = loop (qs !! (n - 1)) (makeClosure (n - 1))
+        | n == 0 = showProgress n $ init
+        | n > 0 = showProgress n $ loop (qs !! (n - 1)) (makeClosure (n - 1))
         where
             init :: Map.Map (ParserS, ParserS) RegEx
-            init = Map.fromList
-                [ mkstrict
-                    ( (q1, q2)
-                    , foldr ReUnion (if q1 == q2 then ReWord [] else ReZero) [ ReWord [ch] | ch <- Set.toList theCsUniv, Map.lookup (q1, ch) delta == Just q2 ]
-                    )
+            init = fromMaybeList
+                [ case reduceRegEx (mkReUnion (if q1 == q2 then ReWord [] else ReZero) (makeRegExFromCharSet (\ch -> Map.lookup (q1, ch) delta == Just q2))) of
+                    ReZero -> ((q1, q2), Nothing)
+                    re -> ((q1, q2), Just re)
                 | q1 <- qs
                 , q2 <- qs
                 ]
             loop :: ParserS -> Map.Map (ParserS, ParserS) RegEx -> Map.Map (ParserS, ParserS) RegEx
-            loop q prev = Map.fromList
-                [ mkstrict
-                    ( (q1, q2)
-                    , ReUnion (prev Map.! (q1, q2)) (ReConcat (prev Map.! (q1, q)) (ReConcat (ReStar (prev Map.! (q, q))) (prev Map.! (q, q2))))
-                    )
+            loop q prev = fromMaybeList
+                [ case reduceRegEx (mkReUnion (prev `lookTable` (q1, q2)) (mkReConcat (prev `lookTable` (q1, q)) (mkReConcat (ReStar (prev `lookTable` (q, q))) (prev `lookTable` (q, q2))))) of
+                    ReZero -> ((q1, q2), Nothing)
+                    re -> ((q1, q2), Just re)
                 | q1 <- qs
                 , q2 <- qs
                 ]
+            fromMaybeList :: Ord k => [(k, Maybe a)] -> Map.Map k a
+            fromMaybeList pairs = Map.fromList [ mkstrict (k, a) | (k, Just a) <- pairs ]
     reduceRegEx :: RegEx -> RegEx
     reduceRegEx (ReConcat re1 re2) = case (reduceRegEx re1, reduceRegEx re2) of
-        (ReWord str1, ReWord str2) -> ReWord (str1 ++ str2)
-        (ReZero, re3) -> ReZero
-        (re3, ReZero) -> ReZero
-        (ReUnion re3 re4, re5) -> ReUnion (reduceRegEx (ReConcat re3 re5)) (reduceRegEx (ReConcat re4 re5))
-        (re3, ReUnion re4 re5) -> ReUnion (reduceRegEx (ReConcat re3 re4)) (reduceRegEx (ReConcat re3 re5))
+        (ReWord str1, ReWord str2) -> mkReWord (str1 ++ str2)
+        (ReZero, re3) -> mkReZero
+        (re3, ReZero) -> mkReZero
+        (ReUnion re3 re4, re5) -> mkReUnion (reduceRegEx (mkReConcat re3 re5)) (reduceRegEx (mkReConcat re4 re5))
+        (re3, ReUnion re4 re5) -> mkReUnion (reduceRegEx (mkReConcat re3 re4)) (reduceRegEx (mkReConcat re3 re5))
         (ReWord [], re3) -> re3
         (re3, ReWord []) -> re3
-        (re3, re4) -> ReConcat re3 re4
+        (re3, re4) -> mkReConcat re3 re4
     reduceRegEx (ReUnion re1 re2) = case (reduceRegEx re1, reduceRegEx re2) of
+        (ReCharSet chs1, ReCharSet chs2) -> ReCharSet (CsUnion chs1 chs2)
         (ReZero, re3) -> re3
         (re3, ReZero) -> re3
-        (ReUnion re3 re4, re5) -> ReUnion re3 (reduceRegEx (ReUnion re4 re5))
-        (re3, ReUnion re4 re5) -> ReUnion (reduceRegEx (ReUnion re3 re4)) re5
-        (ReStar re3, ReStar re4) -> if re3 == re4 then ReStar re3 else ReUnion (ReStar re3) (ReStar re4)
-        (ReStar re3, re4) -> if re3 == re4 then ReStar re3 else ReUnion (ReStar re3) re4
-        (re3, ReStar re4) -> if re3 == re4 then ReStar re4 else ReUnion re3 (ReStar re4)
-        (re3, re4) -> if re3 == re4 then re3 else ReUnion re3 re4
+        (ReStar re3, ReStar re4) -> if re3 == re4 then mkReStar re3 else mkReUnion (mkReStar re3) (mkReStar re4)
+        (ReStar re3, re4) -> if re3 == re4 then mkReStar re3 else mkReUnion (mkReStar re3) re4
+        (re3, ReStar re4) -> if re3 == re4 then mkReStar re4 else mkReUnion re3 (mkReStar re4)
+        (re3, re4) -> if re3 == re4 then re3 else mkReUnion re3 re4
     reduceRegEx (ReStar re1) = case reduceRegEx re1 of
-        ReZero -> ReWord []
-        ReWord [] -> ReWord []
-        ReStar re2 -> ReStar re2
+        ReZero -> mkReWord []
+        ReWord [] -> mkReWord []
+        ReStar re2 -> mkReStar re2
         re2 -> re2
     reduceRegEx re = re
+    theResultTable :: Map.Map (ParserS, ParserS) RegEx
+    theResultTable = makeClosure (length qs)
+    mkReUnion :: RegEx -> RegEx -> RegEx
+    mkReUnion re1 re2 = re1 `seq` re2 `seq` ReUnion re1 re2
+    mkReConcat :: RegEx -> RegEx -> RegEx
+    mkReConcat re1 re2 = re1 `seq` re2 `seq` ReConcat re1 re2
+    mkReStar :: RegEx -> RegEx
+    mkReStar re1 = re1 `seq` ReStar re1
+    mkReWord :: String -> RegEx
+    mkReWord str = str `seq` ReWord str
+    mkReZero :: RegEx
+    mkReZero = ReZero
