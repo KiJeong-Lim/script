@@ -50,7 +50,7 @@ modifyCSinRE modify = go where
 substituteCS :: CharSetEnv -> CharSet -> ExceptT ErrMsg Identity CharSet
 substituteCS env = go where
     go :: CharSet -> ExceptT ErrMsg Identity CharSet
-    go (CsVar var) = maybe (throwE ("`Src.Generator.Lexical.substituteCS\': couldn't find the variable ``$" ++ var ++ "\'\' in the environment `" ++ show env ++ "\'.")) return (Map.lookup var env)
+    go (CsVar var) = maybe (throwE ("`substituteCS\': couldn't find the variable ``$" ++ var ++ "\'\' in the environment `" ++ show env ++ "\'.")) return (Map.lookup var env)
     go (CsSingle ch) = pure (CsSingle ch)
     go (CsEnum ch1 ch2) = pure (CsEnum ch1 ch2)
     go (chs1 `CsUnion` chs2) = pure CsUnion <*> go chs1 <*> go chs2
@@ -60,7 +60,7 @@ substituteCS env = go where
 substituteRE :: RegExEnv -> RegEx -> ExceptT ErrMsg Identity RegEx
 substituteRE env = go where
     go :: RegEx -> ExceptT ErrMsg Identity RegEx
-    go (ReVar var) = maybe (throwE ("`Src.Generator.Lexical.substituteRE\': couldn't find the variable ``$" ++ var ++ "\'\' in the environment `" ++ show env ++ "\'.")) return (Map.lookup var env)
+    go (ReVar var) = maybe (throwE ("`substituteRE\': couldn't find the variable ``$" ++ var ++ "\'\' in the environment `" ++ show env ++ "\'.")) return (Map.lookup var env)
     go ReZero = pure ReZero
     go (regex1 `ReUnion` regex2) = pure ReUnion <*> go regex1 <*> go regex2
     go (ReWord word) = pure (ReWord word)
@@ -138,7 +138,7 @@ genLexer xblocks = do
         tellLine (strstr lexer_name . strstr " = doLexing . addLoc 1 1 where")
         sequence
             [ tellLine (strstr "    -- it is the state " . showsPrec 0 q . strstr " that any string matches the regex " . pprint 0 re . strstr " iff it reaches from the initial state.")
-            | (q, re) <- Map.toAscList (makeStateRegexTable theDFA)
+            | (q, re) <- Map.toAscList (generateRegexTable theDFA)
             ]
         tellLine (strstr "    theDFA :: DFA")
         tellLine (strstr "    theDFA = DFA")

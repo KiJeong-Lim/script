@@ -99,3 +99,36 @@ instance Outputable RegEx where
     pprint 3 (ReVar var) = strstr "$" . strstr var
     pprint 3 re = pprint 4 re
     pprint _ re = strstr "(" . pprint 0 re . strstr ")"
+
+mkCsSingle :: Char -> CharSet
+mkCsSingle ch1 = ch1 `seq` CsSingle ch1
+
+mkCsEnum :: Char -> Char -> CharSet
+mkCsEnum ch1 ch2 = ch1 `seq` ch2 `seq` CsEnum ch1 ch2
+
+mkCsUnion :: CharSet -> CharSet -> CharSet
+mkCsUnion chs1 chs2 = chs1 `seq` chs2 `seq` CsUnion chs1 chs2
+
+mkCsDiff :: CharSet -> CharSet -> CharSet
+mkCsDiff chs1 chs2 = chs1 `seq` chs2 `seq` CsDiff chs1 chs2
+
+mkCsUniv :: CharSet
+mkCsUniv = CsUniv
+
+mkReUnion :: RegEx -> RegEx -> RegEx
+mkReUnion re1 re2 = re1 `seq` re2 `seq` ReUnion re1 re2
+
+mkReConcat :: RegEx -> RegEx -> RegEx
+mkReConcat re1 re2 = re1 `seq` re2 `seq` ReConcat re1 re2
+
+mkReStar :: RegEx -> RegEx
+mkReStar re1 = re1 `seq` ReStar re1
+
+mkReWord :: String -> RegEx
+mkReWord str = str `seq` ReWord str
+
+mkReZero :: RegEx
+mkReZero = ReZero
+
+mkReCharSet :: CharSet -> RegEx
+mkReCharSet chs = chs `seq` ReCharSet chs
