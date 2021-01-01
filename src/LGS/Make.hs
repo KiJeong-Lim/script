@@ -478,7 +478,7 @@ reduceRegEx = go3 . go2 . go1 where
         | ReWord [] <- re2
         = mkReQuest re1
         | otherwise
-        = mkReUnion re1 re2
+        = makeReUnion1 re1 re2
     makeReWord2 :: String -> RegEx
     makeReWord2 = mkReWord
     makeReConcat2 :: RegEx -> RegEx -> RegEx
@@ -521,7 +521,7 @@ reduceRegEx = go3 . go2 . go1 where
         , re1 `equiv` re3
         = mkReDagger re3
         | otherwise
-        = mkReConcat re1 re2
+        = makeReConcat1 re1 re2
     makeReStar2 :: RegEx -> RegEx
     makeReStar2 re1
         | ReStar re2 <- re1
@@ -535,7 +535,7 @@ reduceRegEx = go3 . go2 . go1 where
         | ReZero <- re1
         = mkReWord []
         | otherwise
-        = mkReStar re1
+        = makeReStar1 re1
     makeReDagger2 :: RegEx -> RegEx
     makeReDagger2 = mkReDagger
     makeReQuest2 :: RegEx -> RegEx

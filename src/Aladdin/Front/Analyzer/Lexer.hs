@@ -21,59 +21,59 @@ data DFA
 
 runAladdinLexer :: String -> Either (Int, Int) [Token]
 runAladdinLexer = doLexing . addLoc 1 1 where
-    -- it is the state 0 that any string matches the regex "" iff it reaches from the initial state.
-    -- it is the state 1 that any string matches the regex [' ' '\n'] + [' ' '\n']+ iff it reaches from the initial state.
-    -- it is the state 2 that any string matches the regex "!" iff it reaches from the initial state.
-    -- it is the state 3 that any string matches the regex "\"" + "\"" [. \ '\\' \ '"' \ '\n']* + "\"" [. \ '\\' \ '"' \ '\n']* "\\" (['t' 'n' '\\' '\'' '"'] [. \ '\\' \ '"' \ '\n']* "\\")* (['t' 'n' '\\' '\'' '"'] + ['t' 'n' '\\' '\'' '"'] [. \ '\\' \ '"' \ '\n']*) iff it reaches from the initial state.
-    -- it is the state 5 that any string matches the regex "\'" iff it reaches from the initial state.
-    -- it is the state 6 that any string matches the regex "(" iff it reaches from the initial state.
-    -- it is the state 7 that any string matches the regex ")" iff it reaches from the initial state.
-    -- it is the state 8 that any string matches the regex "," iff it reaches from the initial state.
-    -- it is the state 9 that any string matches the regex "-" iff it reaches from the initial state.
-    -- it is the state 10 that any string matches the regex "." iff it reaches from the initial state.
-    -- it is the state 11 that any string matches the regex ['0'-'9'] + ['0'-'9']+ iff it reaches from the initial state.
-    -- it is the state 12 that any string matches the regex ":" iff it reaches from the initial state.
-    -- it is the state 13 that any string matches the regex "=" iff it reaches from the initial state.
-    -- it is the state 14 that any string matches the regex "?" iff it reaches from the initial state.
-    -- it is the state 15 that any string matches the regex ['A'-'Z'] + ['A'-'Z'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* iff it reaches from the initial state.
-    -- it is the state 16 that any string matches the regex "[" iff it reaches from the initial state.
-    -- it is the state 17 that any string matches the regex "\\" iff it reaches from the initial state.
-    -- it is the state 18 that any string matches the regex "]" iff it reaches from the initial state.
-    -- it is the state 19 that any string matches the regex "_" iff it reaches from the initial state.
-    -- it is the state 20 that any string matches the regex ['u'-'z' 'q'-'r' 'l'-'o' 'g'-'j' 'a'-'e'] + ['u'-'z' 'q'-'r' 'l'-'o' 'g'-'j' 'a'-'e'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* + "f" (['b'-'z' '_' 'A'-'Z' '0'-'9'] + ['b'-'z' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "k" (['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] + ['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "p" (['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] + ['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "s" (['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] + ['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "t" (['z' 's'-'x' 'a'-'q' '_' 'A'-'Z' '0'-'9'] + ['z' 's'-'x' 'a'-'q' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "si" (['h'-'z' 'a'-'f' '_' 'A'-'Z' '0'-'9'] + ['h'-'z' 'a'-'f' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "pi" (['a'-'z' '_' 'A'-'Z' '0'-'9'] + ['a'-'z' '_' 'A'-'Z' '0'-'9']+) + "tr" (['v'-'z' 'a'-'t' '_' 'A'-'Z' '0'-'9'] + ['v'-'z' 'a'-'t' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "ty" (['q'-'z' 'a'-'o' '_' 'A'-'Z' '0'-'9'] + ['q'-'z' 'a'-'o' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "fa" (['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] + ['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "ki" (['o'-'z' 'a'-'m' '_' 'A'-'Z' '0'-'9'] + ['o'-'z' 'a'-'m' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "sig" (['n'-'z' 'a'-'l' '_' 'A'-'Z' '0'-'9'] + ['n'-'z' 'a'-'l' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "tru" (['f'-'z' 'a'-'d' '_' 'A'-'Z' '0'-'9'] + ['f'-'z' 'a'-'d' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "fai" (['m'-'z' 'a'-'k' '_' 'A'-'Z' '0'-'9'] + ['m'-'z' 'a'-'k' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "kin" (['e'-'z' 'a'-'c' '_' 'A'-'Z' '0'-'9'] + ['e'-'z' 'a'-'c' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "typ" (['f'-'z' 'a'-'d' '_' 'A'-'Z' '0'-'9'] + ['f'-'z' 'a'-'d' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "sigm" (['b'-'z' '_' 'A'-'Z' '0'-'9'] + ['b'-'z' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*) + "true" (['a'-'z' '_' 'A'-'Z' '0'-'9'] + ['a'-'z' '_' 'A'-'Z' '0'-'9']+) + "fail" (['a'-'z' '_' 'A'-'Z' '0'-'9'] + ['a'-'z' '_' 'A'-'Z' '0'-'9']+) + "kind" (['a'-'z' '_' 'A'-'Z' '0'-'9'] + ['a'-'z' '_' 'A'-'Z' '0'-'9']+) + "type" (['a'-'z' '_' 'A'-'Z' '0'-'9'] + ['a'-'z' '_' 'A'-'Z' '0'-'9']+) + "sigma" (['a'-'z' '_' 'A'-'Z' '0'-'9'] + ['a'-'z' '_' 'A'-'Z' '0'-'9']+) iff it reaches from the initial state.
-    -- it is the state 21 that any string matches the regex "f" iff it reaches from the initial state.
-    -- it is the state 22 that any string matches the regex "k" iff it reaches from the initial state.
-    -- it is the state 23 that any string matches the regex "p" iff it reaches from the initial state.
-    -- it is the state 24 that any string matches the regex "s" iff it reaches from the initial state.
-    -- it is the state 25 that any string matches the regex "t" iff it reaches from the initial state.
-    -- it is the state 27 that any string matches the regex "si" iff it reaches from the initial state.
-    -- it is the state 28 that any string matches the regex "pi" iff it reaches from the initial state.
-    -- it is the state 29 that any string matches the regex "tr" iff it reaches from the initial state.
-    -- it is the state 30 that any string matches the regex "ty" iff it reaches from the initial state.
-    -- it is the state 31 that any string matches the regex "fa" iff it reaches from the initial state.
-    -- it is the state 32 that any string matches the regex "ki" iff it reaches from the initial state.
-    -- it is the state 34 that any string matches the regex "--" + "--" [. \ '\n']* iff it reaches from the initial state.
-    -- it is the state 35 that any string matches the regex "->" iff it reaches from the initial state.
-    -- it is the state 36 that any string matches the regex "=>" iff it reaches from the initial state.
-    -- it is the state 37 that any string matches the regex "?-" iff it reaches from the initial state.
-    -- it is the state 38 that any string matches the regex ":-" iff it reaches from the initial state.
-    -- it is the state 39 that any string matches the regex "::" iff it reaches from the initial state.
-    -- it is the state 41 that any string matches the regex "\"" [. \ '\\' \ '"' \ '\n']* "\"" + "\"" [. \ '\\' \ '"' \ '\n']* "\\" (['t' 'n' '\\' '\'' '"'] [. \ '\\' \ '"' \ '\n']* "\\")* ['t' 'n' '\\' '\'' '"'] [. \ '\\' \ '"' \ '\n']* "\"" iff it reaches from the initial state.
-    -- it is the state 42 that any string matches the regex "\"" [. \ '\\' \ '"' \ '\n']* "\\" + "\"" [. \ '\\' \ '"' \ '\n']* "\\" (['t' 'n' '\\' '\'' '"'] [. \ '\\' \ '"' \ '\n']* "\\")* iff it reaches from the initial state.
-    -- it is the state 43 that any string matches the regex "\'" [. \ '\\' \ '"' \ '\n'] + "\'\\" ['t' 'n' '\\' '\'' '"'] iff it reaches from the initial state.
-    -- it is the state 44 that any string matches the regex "\'\\" iff it reaches from the initial state.
-    -- it is the state 45 that any string matches the regex "sig" iff it reaches from the initial state.
-    -- it is the state 46 that any string matches the regex "tru" iff it reaches from the initial state.
-    -- it is the state 47 that any string matches the regex "fai" iff it reaches from the initial state.
-    -- it is the state 48 that any string matches the regex "kin" iff it reaches from the initial state.
-    -- it is the state 49 that any string matches the regex "typ" iff it reaches from the initial state.
-    -- it is the state 56 that any string matches the regex "\'" [. \ '\\' \ '"' \ '\n'] "\'" + "\'\\" ['t' 'n' '\\' '\'' '"'] "\'" iff it reaches from the initial state.
-    -- it is the state 62 that any string matches the regex "sigm" iff it reaches from the initial state.
-    -- it is the state 63 that any string matches the regex "true" iff it reaches from the initial state.
-    -- it is the state 64 that any string matches the regex "fail" iff it reaches from the initial state.
-    -- it is the state 65 that any string matches the regex "kind" iff it reaches from the initial state.
-    -- it is the state 66 that any string matches the regex "type" iff it reaches from the initial state.
-    -- it is the state 67 that any string matches the regex "sigma" iff it reaches from the initial state.
+    --  0: ""
+    --  1: [' ' '\n']+
+    --  2: "!"
+    --  3: "\"" + "\"" [. \ '\\' \ '"' \ '\n']* [. \ '\\' \ '"' \ '\n']? + "\"" [. \ '\\' \ '"' \ '\n']* "\\" (['t' 'n' '\\' '\'' '"'] [. \ '\\' \ '"' \ '\n']* "\\")* (['t' 'n' '\\' '\'' '"'] + ['t' 'n' '\\' '\'' '"'] [. \ '\\' \ '"' \ '\n']* [. \ '\\' \ '"' \ '\n']?)
+    --  5: "\'"
+    --  6: "("
+    --  7: ")"
+    --  8: ","
+    --  9: "-"
+    -- 10: "."
+    -- 11: ['0'-'9']+
+    -- 12: ":"
+    -- 13: "="
+    -- 14: "?"
+    -- 15: ['A'-'Z'] + ['A'-'Z'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?
+    -- 16: "["
+    -- 17: "\\"
+    -- 18: "]"
+    -- 19: "_"
+    -- 20: ['u'-'z' 'q'-'r' 'l'-'o' 'g'-'j' 'a'-'e'] + ['u'-'z' 'q'-'r' 'l'-'o' 'g'-'j' 'a'-'e'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']? + "f" (['b'-'z' '_' 'A'-'Z' '0'-'9'] + ['b'-'z' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "k" (['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] + ['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "p" (['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] + ['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "s" (['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] + ['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "t" (['z' 's'-'x' 'a'-'q' '_' 'A'-'Z' '0'-'9'] + ['z' 's'-'x' 'a'-'q' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "si" (['h'-'z' 'a'-'f' '_' 'A'-'Z' '0'-'9'] + ['h'-'z' 'a'-'f' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "pi" ['a'-'z' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* + "tr" (['v'-'z' 'a'-'t' '_' 'A'-'Z' '0'-'9'] + ['v'-'z' 'a'-'t' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "ty" (['q'-'z' 'a'-'o' '_' 'A'-'Z' '0'-'9'] + ['q'-'z' 'a'-'o' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "fa" (['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] + ['j'-'z' 'a'-'h' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "ki" (['o'-'z' 'a'-'m' '_' 'A'-'Z' '0'-'9'] + ['o'-'z' 'a'-'m' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "sig" (['n'-'z' 'a'-'l' '_' 'A'-'Z' '0'-'9'] + ['n'-'z' 'a'-'l' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "tru" (['f'-'z' 'a'-'d' '_' 'A'-'Z' '0'-'9'] + ['f'-'z' 'a'-'d' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "fai" (['m'-'z' 'a'-'k' '_' 'A'-'Z' '0'-'9'] + ['m'-'z' 'a'-'k' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "kin" (['e'-'z' 'a'-'c' '_' 'A'-'Z' '0'-'9'] + ['e'-'z' 'a'-'c' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "typ" (['f'-'z' 'a'-'d' '_' 'A'-'Z' '0'-'9'] + ['f'-'z' 'a'-'d' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "sigm" (['b'-'z' '_' 'A'-'Z' '0'-'9'] + ['b'-'z' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* ['a'-'z' '_' 'A'-'Z' '0'-'9']?) + "true" ['a'-'z' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* + "fail" ['a'-'z' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* + "kind" ['a'-'z' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* + "type" ['a'-'z' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']* + "sigma" ['a'-'z' '_' 'A'-'Z' '0'-'9'] ['a'-'z' '_' 'A'-'Z' '0'-'9']*
+    -- 21: "f"
+    -- 22: "k"
+    -- 23: "p"
+    -- 24: "s"
+    -- 25: "t"
+    -- 27: "si"
+    -- 28: "pi"
+    -- 29: "tr"
+    -- 30: "ty"
+    -- 31: "fa"
+    -- 32: "ki"
+    -- 34: "--" + "--" [. \ '\n']* [. \ '\n']?
+    -- 35: "->"
+    -- 36: "=>"
+    -- 37: "?-"
+    -- 38: ":-"
+    -- 39: "::"
+    -- 41: "\"" [. \ '\\' \ '"' \ '\n']* "\"" + "\"" [. \ '\\' \ '"' \ '\n']* "\\" (['t' 'n' '\\' '\'' '"'] [. \ '\\' \ '"' \ '\n']* "\\")* ['t' 'n' '\\' '\'' '"'] [. \ '\\' \ '"' \ '\n']* "\""
+    -- 42: "\"" [. \ '\\' \ '"' \ '\n']* "\\" + "\"" [. \ '\\' \ '"' \ '\n']* "\\" (['t' 'n' '\\' '\'' '"'] [. \ '\\' \ '"' \ '\n']* "\\")* (['t' 'n' '\\' '\'' '"'] [. \ '\\' \ '"' \ '\n']* "\\")?
+    -- 43: "\'" [. \ '\\' \ '"' \ '\n'] + "\'\\" ['t' 'n' '\\' '\'' '"']
+    -- 44: "\'\\"
+    -- 45: "sig"
+    -- 46: "tru"
+    -- 47: "fai"
+    -- 48: "kin"
+    -- 49: "typ"
+    -- 56: "\'" [. \ '\\' \ '"' \ '\n'] "\'" + "\'\\" ['t' 'n' '\\' '\'' '"'] "\'"
+    -- 62: "sigm"
+    -- 63: "true"
+    -- 64: "fail"
+    -- 65: "kind"
+    -- 66: "type"
+    -- 67: "sigma"
     theDFA :: DFA
     theDFA = DFA
         { getInitialQOfDFA = 0

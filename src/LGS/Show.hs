@@ -70,6 +70,10 @@ substituteRE env = go where
     go (ReQuest regex1) = pure ReQuest <*> go regex1
     go (ReCharSet chs) = pure (ReCharSet chs)
 
+overlap :: String -> String -> String
+overlap str1 str2 = case (length str1, length str2) of
+    (n1, n2) -> if n1 >= n2 then take (n1 - n2) str1 ++ str2 else str2
+
 genLexer :: [XBlock] -> ExceptT ErrMsg Identity (String -> String)
 genLexer xblocks = do
     (_, chs_env) <- flip runStateT Map.empty $ sequence
@@ -100,7 +104,9 @@ genLexer xblocks = do
                 return (regex1'', Just regex2'')
         | XMatch regexes _ <- xblocks
         ]
-    let maybe_head [] = Nothing
+    let theRegexTable = generateRegexTable theDFA
+        theMaxLen = length (show (maybe 0 fst (Set.maxView (Map.keysSet theRegexTable))))
+        maybe_head [] = Nothing
         maybe_head (x : xs) = Just x
         tellLine delta = tell [delta . nl]
     (token_type, lexer_name) <- case maybe_head [ (token_type, lexer_name) | Target token_type lexer_name <- xblocks ] of
@@ -136,14 +142,10 @@ genLexer xblocks = do
         tellLine (strstr "")
         tellLine (strstr lexer_name . strstr " :: String -> Either (Int, Int) [" . strstr token_type . strstr "]")
         tellLine (strstr lexer_name . strstr " = doLexing . addLoc 1 1 where")
-        if True
-            then do
-                sequence
-                    [ tellLine (strstr "    -- it is the state " . showsPrec 0 q . strstr " that any string matches the regex " . pprint 0 re . strstr " iff it reaches from the initial state.")
-                    | (q, re) <- Map.toAscList (generateRegexTable theDFA)
-                    ]
-                return ()
-            else return ()
+        sequence
+            [ tellLine (strstr "    -- " . strstr (overlap (replicate theMaxLen ' ') (show q)) . strstr ": " . pprint 0 re)
+            | (q, re) <- Map.toAscList theRegexTable
+            ]
         tellLine (strstr "    theDFA :: DFA")
         tellLine (strstr "    theDFA = DFA")
         tellLine (strstr "        { getInitialQOfDFA = " . showsPrec 0 (getInitialQOfDFA theDFA))
