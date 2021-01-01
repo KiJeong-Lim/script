@@ -81,6 +81,7 @@ instance Outputable CharSet where
     pprint 2 (CsVar var) = strstr "$" . strstr var
     pprint 2 (CsSingle ch1) = showsPrec 0 ch1
     pprint 2 (CsEnum ch1 ch2) = showsPrec 0 ch1 . strstr "-" . showsPrec 0 ch2
+    pprint 2 (CsUniv) = strstr "."
     pprint 2 chs = pprint 3 chs
     pprint _ chs = strstr "(" . pprint 0 chs . strstr ")"
 

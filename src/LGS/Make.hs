@@ -405,7 +405,7 @@ reduceRegEx = go2 . go1 where
             (chs1_val, chs2_val)
                 | chs1_val `Set.isSubsetOf` chs2_val -> mkReCharSet chs2
                 | chs2_val `Set.isSubsetOf` chs1_val -> mkReCharSet chs1
-                | otherwise -> case List.partition (\ch -> ch `Set.member` chs1_val || ch `Set.member` chs2_val) (Set.toAscList theCsUniv) of
+                | otherwise -> case List.partition (\ch -> ch `Set.member` chs1_val || ch `Set.member` chs2_val) (Set.toDescList theCsUniv) of
                     (yess, nos)
                         | length nos < 5 -> mkReCharSet (List.foldl' mkCsDiff mkCsUniv (map mkCsSingle nos))
                         | otherwise -> extractCS yess
@@ -546,10 +546,19 @@ reduceRegEx = go2 . go1 where
     makeReQuest2 = mkReQuest
     makeReCharSet2 :: CharSet -> RegEx
     makeReCharSet2 chs1
-        = case Set.toList (runCharSet chs1) of
-            [] -> mkReZero
-            [ch1] -> mkReWord [ch1]
-            _ -> mkReCharSet chs1
+        = case List.partition (\ch -> ch `Set.member` runCharSet chs1) (Set.toDescList theCsUniv) of
+            (yess, nos)
+                | length nos < 5 -> mkReCharSet (List.foldl' mkCsDiff mkCsUniv (map mkCsSingle nos))
+                | otherwise -> foldr mkReUnion mkReZero
+                    [ case pair of
+                        (ch1, ch2) -> if ch1 == ch2 then mkReWord [ch1] else mkReCharSet (mkCsEnum ch1 ch2)
+                    | pair <- foldr loop [] yess
+                    ]
+        where
+            loop :: Char -> [(Char, Char)] -> [(Char, Char)]
+            loop ch0 pairs0 = case List.partition (\pair -> snd pair == pred ch0) pairs0 of
+                ([], pairs1) -> (ch0, ch0) : pairs1
+                ([(ch1, ch2)], pairs1) -> (ch1, ch0) : pairs1
     equiv :: RegEx -> RegEx -> Bool
     re1 `equiv` re2 = re1 `implies` re2 && re2 `implies` re1
 

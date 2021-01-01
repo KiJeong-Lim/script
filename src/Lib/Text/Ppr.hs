@@ -14,6 +14,7 @@ module Lib.Text.Ppr
     , indent
     , putDoc
     , renderDoc
+    , pprintChar
     , pprintString
     ) where
 
@@ -83,6 +84,15 @@ instance Show Doc where
     showsPrec 10 DB str = "DB" ++ str
     showsPrec _ doc1 str = "(" ++ showsPrec 0 doc1 (")" ++ str)
 
+instance Outputable Char where
+    pprint _ ch = case ch of
+        '\n' -> strstr "\\n"
+        '\t' -> strstr "\\t"
+        '\\' -> strstr "\\\\"
+        '\"' -> strstr "\\\""
+        '\'' -> strstr "\\\'"
+        ch -> strstr [ch]
+
 empty :: Doc
 empty = DE
 
@@ -150,12 +160,8 @@ renderDoc = render . toViewer . reduce where
     toViewer (DV doc1 doc2) = mkVV (toViewer doc1) (toViewer doc2)
     toViewer (DH doc1 doc2) = mkVH (toViewer doc1) (toViewer doc2)
 
+pprintChar :: Char -> String -> String
+pprintChar ch = strstr "\\\'" . pprint 0 ch . strstr "\\\'"
+
 pprintString :: String -> String -> String
-pprintString str = strstr "\"" . strcat (map go str) . strstr "\"" where
-    go :: Char -> String -> String
-    go '\n' = strstr "\\n"
-    go '\t' = strstr "\\t"
-    go '\\' = strstr "\\\\"
-    go '\"' = strstr "\\\""
-    go '\'' = strstr "\\\'"
-    go ch = strstr [ch]
+pprintString str = strstr "\"" . strcat (map (pprint 0) str) . strstr "\"" where
