@@ -315,7 +315,7 @@ mkReCharSet :: CharSet -> RegEx
 mkReCharSet chs = chs `seq` ReCharSet chs
 
 highschool :: RegEx -> RegEx
-highschool = go3 . go2 . go1 where
+highschool = go2 . go1 where
     isNullable :: RegEx -> Bool
     isNullable (ReZero) = False
     isNullable (ReUnion re1 re2) = isNullable re1 || isNullable re2
@@ -522,7 +522,7 @@ highschool = go3 . go2 . go1 where
         = mkReDagger re3
         | ReConcat re3 re4 <- re1
         = case makeReConcat2 re4 re2 of
-            ReConcat re5 re6 -> makeReConcat1 (makeReConcat2 re3 re5) re4
+            ReConcat re5 re6 -> makeReConcat1 (makeReConcat2 re3 re5) re6
             re5 -> makeReConcat2 re3 re5
         | otherwise
         = makeReConcat1 re1 re2
@@ -567,8 +567,33 @@ highschool = go3 . go2 . go1 where
                     else return (mkCsEnum ch1 ch2)
     equiv :: RegEx -> RegEx -> Bool
     re1 `equiv` re2 = re1 `implies` re2 && re2 `implies` re1
+    makeReZero3 :: RegEx
+    makeReZero3 = mkReZero
+    makeReUnion3 :: RegEx -> RegEx -> RegEx
+    makeReUnion3 = factorize where
+        factorize :: RegEx -> RegEx -> RegEx
+        factorize = undefined
+    makeReWord3 :: String -> RegEx
+    makeReWord3 = mkReWord
+    makeReConcat3 :: RegEx -> RegEx -> RegEx
+    makeReConcat3 = mkReConcat
+    makeReStar3 :: RegEx -> RegEx
+    makeReStar3 = mkReStar
+    makeReDagger3 :: RegEx -> RegEx
+    makeReDagger3 = mkReDagger
+    makeReQuest3 :: RegEx -> RegEx
+    makeReQuest3 = mkReQuest
+    makeReCharSet3 :: CharSet -> RegEx
+    makeReCharSet3 = mkReCharSet
     go3 :: RegEx -> RegEx
-    go3 = id
+    go3 (ReZero) = makeReZero3
+    go3 (ReUnion re1 re2) = makeReUnion3 (go3 re1) (go3 re2)
+    go3 (ReWord str1) = makeReWord3 str1
+    go3 (ReConcat re1 re2) = makeReConcat3 (go3 re1) (go3 re2)
+    go3 (ReStar re1) = makeReStar3 (go3 re1)
+    go3 (ReDagger re1) = makeReDagger3 (go3 re1)
+    go3 (ReQuest re1) = makeReQuest3 (go3 re1)
+    go3 (ReCharSet chs1) = makeReCharSet3 chs1
 
 makeJumpRegexTable :: DFA -> Map.Map (ParserS, ParserS) RegEx
 makeJumpRegexTable (DFA q0 qfs delta markeds) = makeClosure (length qs) where
