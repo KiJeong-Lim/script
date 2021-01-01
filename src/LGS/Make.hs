@@ -308,85 +308,30 @@ mkReZero = ReZero
 mkReCharSet :: CharSet -> RegEx
 mkReCharSet chs = chs `seq` ReCharSet chs
 
-isNullable :: RegEx -> Bool
-isNullable (ReZero) = False
-isNullable (ReUnion re1 re2) = isNullable re1 || isNullable re2
-isNullable (ReWord str1) = null str1
-isNullable (ReConcat re1 re2) = isNullable re1 && isNullable re2
-isNullable (ReStar re1) = True
-isNullable (ReDagger re1) = isNullable re1
-isNullable (ReQuest re1) = True
-isNullable (ReCharSet chs1) = False
-
-getHead :: RegEx -> Set.Set Char
-getHead = flip loop Set.empty where
-    loop :: RegEx -> Set.Set Char -> Set.Set Char
-    loop (ReZero) = id
-    loop (ReUnion re1 re2) = loop re1 . loop re2
-    loop (ReWord str1) = if null str1 then id else Set.insert (head str1)
-    loop (ReConcat re1 re2) = if isNullable re1 then loop re1 . loop re2 else loop re1
-    loop (ReStar re1) = loop re1
-    loop (ReDagger re1) = loop re1
-    loop (ReQuest re1) = loop re1
-    loop (ReCharSet chs1) = Set.union (runCharSet chs1)
-
 reduceRegEx :: RegEx -> RegEx
-reduceRegEx = go where
-    isEmptyCS :: CharSet -> Bool
-    isEmptyCS = Set.null . runCharSet
-    isUnit :: RegEx -> Bool
-    isUnit (ReZero) = False
-    isUnit (ReUnion re1 re2) = (isUnit re1 && (isUnit re2 || isZero re2)) || (isZero re1 && isUnit re2)
-    isUnit (ReWord str1) = null str1
-    isUnit (ReConcat re1 re2) = isUnit re1 && isUnit re2
-    isUnit (ReStar re1) = isUnit re1 || isZero re1
-    isUnit (ReDagger re1) = isUnit re1
-    isUnit (ReQuest re1) = isUnit re1 || isZero re1
-    isUnit (ReCharSet chs1) = False
-    isZero :: RegEx -> Bool
-    isZero (ReZero) = True
-    isZero (ReUnion re1 re2) = isZero re1 && isZero re2
-    isZero (ReWord str1) = False
-    isZero (ReConcat re1 re2) = isZero re1 || isZero re2
-    isZero (ReStar re1) = False
-    isZero (ReDagger re1) = isZero re1
-    isZero (ReQuest re1) = False
-    isZero (ReCharSet chs1) = isEmptyCS chs1
-    isCharSet :: RegEx -> Maybe CharSet
-    isCharSet (ReZero)
-        = pure (mkCsDiff mkCsUniv mkCsUniv)
-    isCharSet (ReUnion re1 re2)
-        = mkCsUnion <$> isCharSet re1 <*> isCharSet re2
-    isCharSet (ReWord str1)
-        | [ch1] <- str1 = return (mkCsSingle ch1)
-        | otherwise = Nothing
-    isCharSet (ReConcat re1 re2)
-        | isUnit re1 = isCharSet re2
-        | isUnit re2 = isCharSet re1
-        | otherwise = Nothing
-    isCharSet (ReStar re1)
-        = Nothing
-    isCharSet (ReDagger re1)
-        = Nothing
-    isCharSet (ReQuest re1)
-        = Nothing
-    isCharSet (ReCharSet chs1)
-        = pure chs1
-    isStar :: RegEx -> Maybe RegEx
-    isStar = undefined
-    areUnions :: RegEx -> [RegEx]
-    areUnions = undefined
-    areConcats :: RegEx -> [RegEx]
-    areConcats = undefined
-    go :: RegEx -> RegEx
-    go re
-        | isZero re = mkReZero
-        | isUnit re = mkReWord []
-        | Just chs <- isCharSet re = mkReCharSet chs
-        | Just re1 <- isStar re = mkReStar re1
-        | re1 : res2 <- areUnions re = List.foldl' mkReUnion re1 res2
-        | re1 : res2 <- areConcats re = List.foldl' mkReConcat re1 res2
-        | otherwise = re
+reduceRegEx (ReConcat re1 re2) = case (reduceRegEx re1, reduceRegEx re2) of
+    (ReWord str1, ReWord str2) -> mkReWord (str1 ++ str2)
+    (ReZero, re3) -> mkReZero
+    (re3, ReZero) -> mkReZero
+    (ReUnion re3 re4, re5) -> mkReUnion (reduceRegEx (mkReConcat re3 re5)) (reduceRegEx (mkReConcat re4 re5))
+    (re3, ReUnion re4 re5) -> mkReUnion (reduceRegEx (mkReConcat re3 re4)) (reduceRegEx (mkReConcat re3 re5))
+    (ReWord [], re3) -> re3
+    (re3, ReWord []) -> re3
+    (re3, re4) -> mkReConcat re3 re4
+reduceRegEx (ReUnion re1 re2) = case (reduceRegEx re1, reduceRegEx re2) of
+    (ReCharSet chs1, ReCharSet chs2) -> ReCharSet (CsUnion chs1 chs2)
+    (ReZero, re3) -> re3
+    (re3, ReZero) -> re3
+    (ReStar re3, ReStar re4) -> if re3 == re4 then mkReStar re3 else mkReUnion (mkReStar re3) (mkReStar re4)
+    (ReStar re3, re4) -> if re3 == re4 then mkReStar re3 else mkReUnion (mkReStar re3) re4
+    (re3, ReStar re4) -> if re3 == re4 then mkReStar re4 else mkReUnion re3 (mkReStar re4)
+    (re3, re4) -> if re3 == re4 then re3 else mkReUnion re3 re4
+reduceRegEx (ReStar re1) = case reduceRegEx re1 of
+    ReZero -> mkReWord []
+    ReWord [] -> mkReWord []
+    ReStar re2 -> mkReStar re2
+    re2 -> mkReStar re2
+reduceRegEx re = re
 
 makeJumpRegexTable :: DFA -> Map.Map (ParserS, ParserS) RegEx
 makeJumpRegexTable (DFA q0 qfs delta markeds) = makeClosure (length qs) where
@@ -450,8 +395,8 @@ generateRegexTable dfa = result where
             , Map.keysSet (getFinalQsOfDFA dfa)
             , Set.unions [ Set.fromList [q, p] | ((q, ch), p) <- Map.toAscList (getTransitionsOfDFA dfa) ]
             ]
-    theJumpTable :: Map.Map (ParserS, ParserS) RegEx
-    theJumpTable = makeJumpRegexTable dfa
+    theJumpRegexTable :: Map.Map (ParserS, ParserS) RegEx
+    theJumpRegexTable = makeJumpRegexTable dfa
     result :: Map.Map ParserS RegEx
     result = Map.fromAscList
         [ mkstrict
