@@ -314,8 +314,8 @@ mkReQuest re1 = re1 `seq` ReQuest re1
 mkReCharSet :: CharSet -> RegEx
 mkReCharSet chs = chs `seq` ReCharSet chs
 
-reduceRegEx :: RegEx -> RegEx
-reduceRegEx = go3 . go2 . go1 where
+highschool :: RegEx -> RegEx
+highschool = go3 . go2 . go1 where
     isNullable :: RegEx -> Bool
     isNullable (ReZero) = False
     isNullable (ReUnion re1 re2) = isNullable re1 || isNullable re2
@@ -327,11 +327,11 @@ reduceRegEx = go3 . go2 . go1 where
     isNullable (ReCharSet chs1) = False
     extractCS :: [Char] -> RegEx
     extractCS chs
-        = case foldr loop1 [] chs of
+        = case reverse (foldr loop1 [] chs) of
             [] -> mkReZero
-            [(ch1, ch2)]
-                | ch1 == ch2 -> ReWord [ch1]
-            pair : pairs -> mkReCharSet (foldr mkCsUnion (loop2 pair) (map loop2 pairs))
+            pair : pairs -> case foldr mkCsUnion (loop2 pair) (map loop2 pairs) of
+                CsSingle ch -> mkReWord [ch]
+                chs' -> mkReCharSet chs'
         where
             loop1 :: Char -> [(Char, Char)] -> [(Char, Char)]
             loop1 ch0 pairs0 = case List.partition (\pair -> snd pair == pred ch0) pairs0 of
@@ -549,7 +549,7 @@ reduceRegEx = go3 . go2 . go1 where
         = case List.partition (\ch -> ch `Set.member` runCharSet chs1) (Set.toDescList theCsUniv) of
             (yess, nos)
                 | length nos < 5 -> mkReCharSet (List.foldl' mkCsDiff mkCsUniv (map mkCsSingle nos))
-                | otherwise -> case mkCollection yess of
+                | otherwise -> case reverse (mkCollection yess) of
                     [] -> mkReZero
                     re1 : res2 -> case List.foldl' mkCsUnion re1 res2 of
                         CsSingle ch3 -> ReWord [ch3]
@@ -605,7 +605,7 @@ makeJumpRegexTable (DFA q0 qfs delta markeds) = makeClosure (length qs) where
         where
             init :: Map.Map (ParserS, ParserS) RegEx
             init = fromMaybeList
-                [ case reduceRegEx (mkReUnion (if q1 == q2 then mkReWord [] else mkReZero) (makeRegExFromCharSet (\ch -> Map.lookup (q1, ch) delta == Just q2))) of
+                [ case highschool (mkReUnion (if q1 == q2 then mkReWord [] else mkReZero) (makeRegExFromCharSet (\ch -> Map.lookup (q1, ch) delta == Just q2))) of
                     ReZero -> ((q1, q2), Nothing)
                     re -> ((q1, q2), Just re)
                 | q1 <- qs
@@ -613,7 +613,7 @@ makeJumpRegexTable (DFA q0 qfs delta markeds) = makeClosure (length qs) where
                 ]
             loop :: ParserS -> Map.Map (ParserS, ParserS) RegEx -> Map.Map (ParserS, ParserS) RegEx
             loop q prev = fromMaybeList
-                [ case reduceRegEx (mkReUnion (prev `lookTable` (q1, q2)) (mkReConcat (prev `lookTable` (q1, q)) (mkReConcat (mkReStar (prev `lookTable` (q, q))) (prev `lookTable` (q, q2))))) of
+                [ case highschool (mkReUnion (prev `lookTable` (q1, q2)) (mkReConcat (prev `lookTable` (q1, q)) (mkReConcat (mkReStar (prev `lookTable` (q, q))) (prev `lookTable` (q, q2))))) of
                     ReZero -> ((q1, q2), Nothing)
                     re -> ((q1, q2), Just re)
                 | q1 <- qs
