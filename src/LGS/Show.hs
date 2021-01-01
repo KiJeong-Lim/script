@@ -136,10 +136,14 @@ genLexer xblocks = do
         tellLine (strstr "")
         tellLine (strstr lexer_name . strstr " :: String -> Either (Int, Int) [" . strstr token_type . strstr "]")
         tellLine (strstr lexer_name . strstr " = doLexing . addLoc 1 1 where")
-        sequence
-            [ tellLine (strstr "    -- it is the state " . showsPrec 0 q . strstr " that any string matches the regex " . pprint 0 re . strstr " iff it reaches from the initial state.")
-            | (q, re) <- Map.toAscList (generateRegexTable theDFA)
-            ]
+        if False
+            then do
+                sequence
+                    [ tellLine (strstr "    -- it is the state " . showsPrec 0 q . strstr " that any string matches the regex " . pprint 0 re . strstr " iff it reaches from the initial state.")
+                    | (q, re) <- Map.toAscList (generateRegexTable theDFA)
+                    ]
+                return ()
+            else return ()
         tellLine (strstr "    theDFA :: DFA")
         tellLine (strstr "    theDFA = DFA")
         tellLine (strstr "        { getInitialQOfDFA = " . showsPrec 0 (getInitialQOfDFA theDFA))

@@ -401,7 +401,7 @@ generateRegexTable dfa = result where
     result = Map.fromAscList
         [ mkstrict
             ( q
-            , theJumpTable Map.! (getInitialQOfDFA dfa, q)
+            , theJumpRegexTable Map.! (getInitialQOfDFA dfa, q)
             )
         | q <- qs
         ]
