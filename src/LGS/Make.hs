@@ -520,6 +520,10 @@ reduceRegEx = go3 . go2 . go1 where
         | ReStar re3 <- re2
         , re1 `equiv` re3
         = mkReDagger re3
+        | ReConcat re3 re4 <- re1
+        = case makeReConcat2 re4 re2 of
+            ReConcat re5 re6 -> makeReConcat1 (makeReConcat2 re3 re5) re4
+            re5 -> makeReConcat2 re3 re5
         | otherwise
         = makeReConcat1 re1 re2
     makeReStar2 :: RegEx -> RegEx
