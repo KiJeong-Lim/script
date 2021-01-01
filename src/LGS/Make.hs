@@ -477,12 +477,8 @@ reduceRegEx = go2 . go1 where
         = mkReQuest re2
         | ReWord [] <- re2
         = mkReQuest re1
-        | re1 `implies` re2
-        = re2
-        | re2 `implies` re1
-        = re1
         | otherwise
-        = mkReUnion re1 re2
+        = makeReUnion1 re1 re2
     makeReWord2 :: String -> RegEx
     makeReWord2 = mkReWord
     makeReConcat2 :: RegEx -> RegEx -> RegEx
@@ -525,7 +521,7 @@ reduceRegEx = go2 . go1 where
         , re1 `equiv` re3
         = mkReDagger re3
         | otherwise
-        = mkReConcat re1 re2
+        = makeReConcat1 re1 re2
     makeReStar2 :: RegEx -> RegEx
     makeReStar2 re1
         | ReStar re2 <- re1
@@ -539,7 +535,7 @@ reduceRegEx = go2 . go1 where
         | ReZero <- re1
         = mkReWord []
         | otherwise
-        = mkReStar re1
+        = makeReStar1 re1
     makeReDagger2 :: RegEx -> RegEx
     makeReDagger2 = mkReDagger
     makeReQuest2 :: RegEx -> RegEx
@@ -549,16 +545,20 @@ reduceRegEx = go2 . go1 where
         = case List.partition (\ch -> ch `Set.member` runCharSet chs1) (Set.toDescList theCsUniv) of
             (yess, nos)
                 | length nos < 5 -> mkReCharSet (List.foldl' mkCsDiff mkCsUniv (map mkCsSingle nos))
-                | otherwise -> foldr mkReUnion mkReZero
-                    [ case pair of
-                        (ch1, ch2) -> if ch1 == ch2 then mkReWord [ch1] else mkReCharSet (mkCsEnum ch1 ch2)
-                    | pair <- foldr loop [] yess
-                    ]
+                | otherwise -> case mkCollection yess of
+                    [] -> mkReZero
+                    re1 : res2 -> List.foldl' mkReUnion re1 res2
         where
             loop :: Char -> [(Char, Char)] -> [(Char, Char)]
             loop ch0 pairs0 = case List.partition (\pair -> snd pair == pred ch0) pairs0 of
                 ([], pairs1) -> (ch0, ch0) : pairs1
                 ([(ch1, ch2)], pairs1) -> (ch1, ch0) : pairs1
+            mkCollection :: [Char] -> [RegEx]
+            mkCollection yess = do
+                (ch1, ch2) <- foldr loop [] yess
+                if ch1 == ch2
+                    then return (mkReWord [ch1])
+                    else return (mkReCharSet (mkCsEnum ch1 ch2))
     equiv :: RegEx -> RegEx -> Bool
     re1 `equiv` re2 = re1 `implies` re2 && re2 `implies` re1
 
