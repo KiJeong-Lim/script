@@ -315,7 +315,7 @@ mkReCharSet :: CharSet -> RegEx
 mkReCharSet chs = chs `seq` ReCharSet chs
 
 highschool :: RegEx -> RegEx
-highschool = go2 . go1 where
+highschool = go3 . go2 . go1 where
     isNullable :: RegEx -> Bool
     isNullable (ReZero) = False
     isNullable (ReUnion re1 re2) = isNullable re1 || isNullable re2
@@ -570,15 +570,19 @@ highschool = go2 . go1 where
     makeReZero3 :: RegEx
     makeReZero3 = mkReZero
     makeReUnion3 :: RegEx -> RegEx -> RegEx
-    makeReUnion3 = factorize where
-        factorize :: RegEx -> RegEx -> RegEx
-        factorize = undefined
+    makeReUnion3 re1 re2
+        | ReUnion re3 re4 <- re1
+        = case makeReUnion3 re4 re2 of
+            ReUnion re5 re6 -> makeReUnion2 (makeReUnion3 re3 re5) re6
+            re5 -> makeReUnion3 re3 re5
+        | otherwise
+        = factorizeTwo re1 re2
     makeReWord3 :: String -> RegEx
     makeReWord3 = mkReWord
     makeReConcat3 :: RegEx -> RegEx -> RegEx
-    makeReConcat3 = mkReConcat
+    makeReConcat3 = makeReConcat2
     makeReStar3 :: RegEx -> RegEx
-    makeReStar3 = mkReStar
+    makeReStar3 = makeReStar2
     makeReDagger3 :: RegEx -> RegEx
     makeReDagger3 = mkReDagger
     makeReQuest3 :: RegEx -> RegEx
@@ -594,6 +598,35 @@ highschool = go2 . go1 where
     go3 (ReDagger re1) = makeReDagger3 (go3 re1)
     go3 (ReQuest re1) = makeReQuest3 (go3 re1)
     go3 (ReCharSet chs1) = makeReCharSet3 chs1
+    factorizeTwo :: RegEx -> RegEx -> RegEx
+    factorizeTwo re1 re2 = foldConcat (loop1 (unfoldConcat re1) (unfoldConcat re2)) where
+        unfoldConcat :: RegEx -> [RegEx]
+        unfoldConcat (ReConcat re1 re2) = unfoldConcat re1 ++ unfoldConcat re2
+        unfoldConcat re1 = [re1]
+        foldConcat :: [RegEx] -> RegEx
+        foldConcat [] = mkReWord []
+        foldConcat (re1 : res2) = List.foldl' mkReConcat re1 res2
+        loop1 :: [RegEx] -> [RegEx] -> [RegEx]
+        loop1 [] res1 = [makeReUnion2 (mkReWord []) (foldConcat res1)]
+        loop1 res1 [] = [makeReUnion2 (foldConcat res1) (mkReWord [])]
+        loop1 (re1 : res2) (re3 : res4)
+            | re1 `equiv` re3 = re1 : loop1 res2 res4
+            | otherwise = argmax getGoodness [res5, res6, res7]
+            where
+                getGoodness :: [RegEx] -> Int
+                getGoodness [] = 0
+                getGoodness (ReUnion re1 re2 : res) = getGoodness res
+                getGoodness (re : res) = getGoodness res + 1
+                res5 :: [RegEx]
+                res5 = makeReUnion2 re1 re3 : loop1 res2 res4
+                res6 :: [RegEx]
+                res6 = makeReUnion2 (mkReWord []) re3 : loop1 (re1 : res2) res4
+                res7 :: [RegEx]
+                res7 = makeReUnion2 re1 (mkReWord []) : loop1 res2 (re3 : res4)
+        argmax :: (a -> Int) -> [a] -> a
+        argmax f xs = fst (List.foldl' go (head xs, f (head xs)) [ (x, f x) | x <- tail xs ]) where
+            go :: (a, Int) -> (a, Int) -> (a, Int)
+            go (x1, n1) (x2, n2) = if n1 >= n2 then (x1, n1) else (x2, n2)
 
 makeJumpRegexTable :: DFA -> Map.Map (ParserS, ParserS) RegEx
 makeJumpRegexTable (DFA q0 qfs delta markeds) = makeClosure (length qs) where

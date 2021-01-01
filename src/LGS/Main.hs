@@ -34,6 +34,3 @@ main = do
     putStrLn "Enter the path:"
     dir <- getLine
     runLGS dir
-
-test :: IO ()
-test = runLGS "src/Aladdin/Front/Analyzer/Lexer"
