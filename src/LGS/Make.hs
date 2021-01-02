@@ -10,6 +10,7 @@ import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import LGS.Util
+import Lib.Base
 
 theCsUniv :: Set.Set Char
 theCsUniv = Set.fromList (['a' .. 'z'] ++ ['A' .. 'Z'] ++ " `~0123456789!@#$%^&*()-=_+[]\\{}|;\':\"\n,./<>?")
@@ -314,17 +315,58 @@ mkReQuest re1 = re1 `seq` ReQuest re1
 mkReCharSet :: CharSet -> RegEx
 mkReCharSet chs = chs `seq` ReCharSet chs
 
-highschool :: RegEx -> RegEx
-highschool = go3 . go2 . go1 where
-    isNullable :: RegEx -> Bool
-    isNullable (ReZero) = False
-    isNullable (ReUnion re1 re2) = isNullable re1 || isNullable re2
-    isNullable (ReWord str1) = null str1
-    isNullable (ReConcat re1 re2) = isNullable re1 && isNullable re2
-    isNullable (ReStar re1) = True
-    isNullable (ReDagger re1) = isNullable re1
-    isNullable (ReQuest re1) = True
-    isNullable (ReCharSet chs1) = False
+isNullable :: RegEx -> Bool
+isNullable (ReZero) = False
+isNullable (ReUnion re1 re2) = isNullable re1 || isNullable re2
+isNullable (ReWord str1) = null str1
+isNullable (ReConcat re1 re2) = isNullable re1 && isNullable re2
+isNullable (ReStar re1) = True
+isNullable (ReDagger re1) = isNullable re1
+isNullable (ReQuest re1) = True
+isNullable (ReCharSet chs1) = False
+
+implies :: RegEx -> RegEx -> Bool
+re1 `implies` re2
+    | re1 == re2 = True
+    | otherwise = dispatch re1 re2
+    where
+        dispatch :: RegEx -> RegEx -> Bool
+        dispatch (ReZero) re1 = True
+        dispatch (ReUnion re1 re2) re3 = re1 `implies` re3 && re2 `implies` re3
+        dispatch (ReWord []) re1 = isNullable re1
+        dispatch (ReCharSet chs1) (ReCharSet chs2) = runCharSet chs1 `Set.isSubsetOf` runCharSet chs2
+        dispatch (ReCharSet chs1) (ReWord [ch2]) = runCharSet chs1 `Set.isSubsetOf` Set.singleton ch2
+        dispatch (ReWord [ch1]) (ReCharSet chs2) = ch1 `Set.member` runCharSet chs2
+        dispatch (ReStar re1) (ReStar re2) = re1 `implies` re2
+        dispatch (ReStar re1) (ReDagger re2) = isNullable re2 && re1 `implies` ReStar re2
+        dispatch (ReStar re1) (ReQuest re2) = ReStar re1 `implies` re2
+        dispatch (ReDagger re1) (ReStar re2) = re1 `implies` re2
+        dispatch (ReDagger re1) (ReDagger re2) = re1 `implies` re2
+        dispatch (ReDagger re1) (ReQuest re2) = ReStar re1 `implies` re2
+        dispatch (ReQuest re1) (ReStar re2) = re1 `implies` ReStar re2
+        dispatch (ReQuest re1) (ReDagger re2) = isNullable re2 && re1 `implies` ReStar re2
+        dispatch (ReQuest re1) (ReQuest re2) = re1 `implies` re2
+        dispatch (ReConcat re1 re2) (ReStar re3) = re1 `implies` ReStar re3 && re2 `implies` ReStar re3
+        dispatch (ReConcat re1 re2) (ReDagger re3) = (re1 `implies` ReDagger re3 && re2 `implies` ReStar re3) || (re1 `implies` ReStar re3 && re2 `implies` ReDagger re3)
+        dispatch re1 (ReUnion re2 re3) = re1 `implies` re2 || re1 `implies` re3
+        dispatch re1 (ReStar re2) = re1 `implies` ReWord [] || re1 `implies` re2
+        dispatch re1 (ReDagger re2) = re1 `implies` re2
+        dispatch re1 (ReQuest re2) = re1 `implies` ReWord [] || re1 `implies` re2
+        dispatch re1 re2 = False
+
+equiv :: RegEx -> RegEx -> Bool
+re1 `equiv` re2 = re1 `implies` re2 && re2 `implies` re1
+
+reduceRegEx :: RegEx -> RegEx
+reduceRegEx = go4 . go3 . go2 . go1 where
+    dropLast :: [x] -> [x]
+    dropLast [] = []
+    dropLast [x1] = []
+    dropLast (x1 : xs) = x1 : dropLast xs
+    unfoldConcat :: RegEx -> [RegEx]
+    unfoldConcat (ReConcat re1 re2) = unfoldConcat re1 ++ unfoldConcat re2
+    unfoldConcat (ReWord []) = []
+    unfoldConcat re1 = [re1]
     extractCS :: [Char] -> RegEx
     extractCS chs
         = case reverse (foldr loop1 [] chs) of
@@ -420,29 +462,6 @@ highschool = go3 . go2 . go1 where
     go1 (ReDagger re1) = makeReDagger1 (go1 re1)
     go1 (ReQuest re1) = makeReQuest1 (go1 re1)
     go1 (ReCharSet chs1) = makeReCharSet1 chs1
-    implies :: RegEx -> RegEx -> Bool
-    re1 `implies` re2
-        | re1 == re2 = True
-    ReZero `implies` re1 = True
-    ReUnion re1 re2 `implies` re3 = re1 `implies` re3 && re2 `implies` re3
-    ReWord [] `implies` re1 = isNullable re1
-    ReCharSet chs1 `implies` ReCharSet chs2 = runCharSet chs1 `Set.isSubsetOf` runCharSet chs2
-    ReCharSet chs1 `implies` ReWord [ch2] = runCharSet chs1 `Set.isSubsetOf` Set.singleton ch2
-    ReWord [ch1] `implies` ReCharSet chs2 = ch1 `Set.member` runCharSet chs2
-    re1 `implies` ReUnion re2 re3 = re1 `implies` re2 || re1 `implies` re3
-    ReStar re1 `implies` ReStar re2 = re1 `implies` re2
-    ReStar re1 `implies` ReDagger re2 = isNullable re2 && re1 `implies` ReStar re2
-    ReStar re1 `implies` ReQuest re2 = ReStar re1 `implies` re2
-    ReDagger re1 `implies` ReStar re2 = re1 `implies` re2
-    ReDagger re1 `implies` ReDagger re2 = re1 `implies` re2
-    ReDagger re1 `implies` ReQuest re2 = ReStar re1 `implies` re2
-    ReQuest re1 `implies` ReStar re2 = re1 `implies` ReStar re2
-    ReQuest re1 `implies` ReDagger re2 = isNullable re2 && re1 `implies` ReStar re2
-    ReQuest re1 `implies` ReQuest re2 = re1 `implies` re2
-    re1 `implies` ReStar re2 = re1 `implies` re2
-    re1 `implies` ReDagger re2 = re1 `implies` re2
-    re1 `implies` ReQuest re2 = re1 `implies` re2
-    re1 `implies` re2 = False
     go2 :: RegEx -> RegEx
     go2 (ReZero) = makeReZero2
     go2 (ReUnion re1 re2) = makeReUnion2 (go2 re1) (go2 re2)
@@ -501,7 +520,7 @@ highschool = go3 . go2 . go1 where
         | ReDagger re3 <- re1
         , ReStar re4 <- re2
         , re3 `equiv` re4
-        = re2
+        = re1
         | ReDagger re3 <- re1
         , ReQuest re4 <- re2
         , re3 `equiv` re4
@@ -529,15 +548,11 @@ highschool = go3 . go2 . go1 where
     makeReStar2 :: RegEx -> RegEx
     makeReStar2 re1
         | ReStar re2 <- re1
-        = re1
+        = makeReStar2 re2
         | ReDagger re2 <- re1
-        = mkReStar re1
+        = makeReStar2 re2
         | ReQuest re2 <- re1
-        = mkReStar re1
-        | ReWord [] <- re1
-        = re1
-        | ReZero <- re1
-        = mkReWord []
+        = makeReStar2 re2
         | otherwise
         = makeReStar1 re1
     makeReDagger2 :: RegEx -> RegEx
@@ -565,8 +580,6 @@ highschool = go3 . go2 . go1 where
                 if ch1 == ch2
                     then return (mkCsSingle ch1)
                     else return (mkCsEnum ch1 ch2)
-    equiv :: RegEx -> RegEx -> Bool
-    re1 `equiv` re2 = re1 `implies` re2 && re2 `implies` re1
     makeReZero3 :: RegEx
     makeReZero3 = mkReZero
     makeReUnion3 :: RegEx -> RegEx -> RegEx
@@ -576,13 +589,52 @@ highschool = go3 . go2 . go1 where
             ReUnion re5 re6 -> makeReUnion2 (makeReUnion3 re3 re5) re6
             re5 -> makeReUnion3 re3 re5
         | otherwise
-        = factorizeTwo re1 re2
+        = case go (unfoldConcat re1) (unfoldConcat re2) of
+            Nothing -> makeReUnion2 re1 re2
+            Just re3 -> re3
+        where
+            go :: [RegEx] -> [RegEx] -> Maybe RegEx
+            go res1 res2
+                | null res1 || null res2 = return (tryToMerge res1 res2)
+                | Just res3 <- head res1 `matchPrefix` res2 = do
+                    re4 <- go (tail res1) res3
+                    return (mkReConcat (head res1) re4)
+                | Just res3 <- last res1 `matchSuffix` res2 = do
+                    re4 <- go (dropLast res1) res3
+                    return (mkReConcat re4 (last res1))
+                | otherwise = Nothing
+            tryToMerge :: [RegEx] -> [RegEx] -> RegEx
+            tryToMerge [] [] = makeReWord2 []
+            tryToMerge [] (re1 : res2) = makeReQuest2 (List.foldl' makeReConcat2 re1 res2)
+            tryToMerge (re1 : res2) [] = makeReQuest2 (List.foldl' makeReConcat2 re1 res2)
+            tryToMerge (re1 : res2) (re3 : res4) = makeReUnion2 (List.foldl' makeReConcat2 re1 res2) (List.foldl' makeReConcat2 re3 res4)
     makeReWord3 :: String -> RegEx
     makeReWord3 = mkReWord
     makeReConcat3 :: RegEx -> RegEx -> RegEx
-    makeReConcat3 = mkReConcat
+    makeReConcat3 = makeReConcat2
     makeReStar3 :: RegEx -> RegEx
-    makeReStar3 = mkReStar
+    makeReStar3 re0
+        | ReConcat re1 re2 <- re0
+        = case foldr loop1 init1 (unfoldConcat re1 ++ unfoldConcat re2) of
+            Nothing -> makeReStar2 (mkReConcat re1 re2)
+            Just (re3', res4) -> case (re3', res4) of
+                (Nothing, []) -> mkReWord []
+                (Nothing, re5 : res6) -> mkReStar (List.foldl' makeReUnion3 re5 res6)
+                (Just re5, res6) -> mkReStar (List.foldl' makeReUnion1 re5 res6)
+        | otherwise
+        = makeReStar2 re0
+        where
+            init1 :: Maybe (Maybe RegEx, [RegEx])
+            init1 = Just (Nothing, [])
+            loop1 :: RegEx -> Maybe (Maybe RegEx, [RegEx]) -> Maybe (Maybe RegEx, [RegEx])
+            loop1 (ReStar re1) acc = do
+                (re2', res3) <- acc
+                return (re2', re1 : res3)
+            loop1 re1 acc = do
+                (re2', res3) <- acc
+                case re2' of
+                    Nothing -> return (Just re1, res3)
+                    Just re2 -> Nothing
     makeReDagger3 :: RegEx -> RegEx
     makeReDagger3 = mkReDagger
     makeReQuest3 :: RegEx -> RegEx
@@ -598,35 +650,12 @@ highschool = go3 . go2 . go1 where
     go3 (ReDagger re1) = makeReDagger3 (go3 re1)
     go3 (ReQuest re1) = makeReQuest3 (go3 re1)
     go3 (ReCharSet chs1) = makeReCharSet3 chs1
-    factorizeTwo :: RegEx -> RegEx -> RegEx
-    factorizeTwo re1 re2
-        = case go (unfoldConcat re1) (unfoldConcat re2) of
-            Nothing -> makeReUnion2 re1 re2
-            Just re3 -> re3
-        where
-            dropLast :: [x] -> [x]
-            dropLast (x1 : x2 : []) = [x2]
-            dropLast (x1 : x2 : x3 : xs) = dropLast (x2 : x3 : xs)
-            dropLast _ = []
-            foldConcat :: [RegEx] -> RegEx
-            foldConcat [] = mkReWord []
-            foldConcat (re1 : res2) = List.foldl' mkReConcat re1 res2
-            unfoldConcat :: RegEx -> [RegEx]
-            unfoldConcat (ReConcat re1 re2) = unfoldConcat re1 ++ unfoldConcat re2
-            unfoldConcat (ReWord []) = []
-            unfoldConcat re1 = [re1]
-            go :: [RegEx] -> [RegEx] -> Maybe RegEx
-            go res1 res2
-                | null res1 && null res2 = return (mkReWord [])
-                | null res1 = return (makeReUnion2 (mkReWord []) (foldConcat res2))
-                | null res2 = return (makeReUnion2 (foldConcat res1) (mkReWord []))
-                | head res1 `equiv` head res2 = do
-                    re3 <- go (tail res1) (tail res2)
-                    return (makeReConcat2 (head res1) re3)
-                | last res1 `equiv` last res2 = do
-                    re3 <- go (dropLast res1) (dropLast res2)
-                    return (makeReConcat2 re3 (last res1))
-                | otherwise = Nothing
+    matchPrefix :: RegEx -> [RegEx] -> Maybe [RegEx]
+    matchPrefix re1 res2 = if re1 `equiv` head res2 then return (tail res2) else Nothing
+    matchSuffix :: RegEx -> [RegEx] -> Maybe [RegEx]
+    matchSuffix re1 res2 = if re1 `equiv` last res2 then return (dropLast res2) else Nothing
+    go4 :: RegEx -> RegEx
+    go4 = id
 
 makeJumpRegexTable :: DFA -> Map.Map (ParserS, ParserS) RegEx
 makeJumpRegexTable (DFA q0 qfs delta markeds) = makeClosure (length qs) where
@@ -663,7 +692,7 @@ makeJumpRegexTable (DFA q0 qfs delta markeds) = makeClosure (length qs) where
         where
             init :: Map.Map (ParserS, ParserS) RegEx
             init = fromMaybeList
-                [ case highschool (mkReUnion (if q1 == q2 then mkReWord [] else mkReZero) (makeRegExFromCharSet (\ch -> Map.lookup (q1, ch) delta == Just q2))) of
+                [ case reduceRegEx (mkReUnion (if q1 == q2 then mkReWord [] else mkReZero) (makeRegExFromCharSet (\ch -> Map.lookup (q1, ch) delta == Just q2))) of
                     ReZero -> ((q1, q2), Nothing)
                     re -> ((q1, q2), Just re)
                 | q1 <- qs
@@ -671,7 +700,7 @@ makeJumpRegexTable (DFA q0 qfs delta markeds) = makeClosure (length qs) where
                 ]
             loop :: ParserS -> Map.Map (ParserS, ParserS) RegEx -> Map.Map (ParserS, ParserS) RegEx
             loop q prev = fromMaybeList
-                [ case highschool (mkReUnion (prev `lookTable` (q1, q2)) (mkReConcat (prev `lookTable` (q1, q)) (mkReConcat (mkReStar (prev `lookTable` (q, q))) (prev `lookTable` (q, q2))))) of
+                [ case reduceRegEx (mkReUnion (prev `lookTable` (q1, q2)) (mkReConcat (prev `lookTable` (q1, q)) (mkReConcat (mkReStar (prev `lookTable` (q, q))) (prev `lookTable` (q, q2))))) of
                     ReZero -> ((q1, q2), Nothing)
                     re -> ((q1, q2), Just re)
                 | q1 <- qs
@@ -683,13 +712,7 @@ makeJumpRegexTable (DFA q0 qfs delta markeds) = makeClosure (length qs) where
 generateRegexTable :: DFA -> Map.Map ParserS RegEx
 generateRegexTable dfa = result where
     qs :: [ParserS]
-    qs = Set.toAscList theSetOfAllStatesInGraph where
-        theSetOfAllStatesInGraph :: Set.Set ParserS
-        theSetOfAllStatesInGraph = Set.unions
-            [ Set.singleton (getInitialQOfDFA dfa)
-            , Map.keysSet (getFinalQsOfDFA dfa)
-            , Set.unions [ Set.fromList [q, p] | ((q, ch), p) <- Map.toAscList (getTransitionsOfDFA dfa) ]
-            ]
+    qs = Set.toAscList (Set.map fst (Map.keysSet (getTransitionsOfDFA dfa)) `Set.union` Map.keysSet (getFinalQsOfDFA dfa))
     theJumpRegexTable :: Map.Map (ParserS, ParserS) RegEx
     theJumpRegexTable = makeJumpRegexTable dfa
     result :: Map.Map ParserS RegEx
