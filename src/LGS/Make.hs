@@ -295,25 +295,60 @@ mkReZero :: RegEx
 mkReZero = ReZero
 
 mkReUnion :: RegEx -> RegEx -> RegEx
-mkReUnion re1 re2 = re1 `seq` re2 `seq` ReUnion re1 re2
+mkReUnion (ReZero) re1 = re1
+mkReUnion re1 (ReZero) = re1
+mkReUnion re1 re2 = ReUnion re1 re2
 
 mkReWord :: String -> RegEx
 mkReWord str = str `seq` ReWord str
 
 mkReConcat :: RegEx -> RegEx -> RegEx
-mkReConcat re1 re2 = re1 `seq` re2 `seq` ReConcat re1 re2
+mkReConcat (ReZero) re1 = ReZero
+mkReConcat re1 (ReZero) = ReZero
+mkReConcat (ReWord str1) (ReWord str2) = mkReWord (str1 ++ str2)
+mkReConcat (ReWord []) re1 = re1
+mkReConcat re1 (ReWord []) = re1
+mkReConcat re1 re2 = ReConcat re1 re2
 
 mkReStar :: RegEx -> RegEx
-mkReStar re1 = re1 `seq` ReStar re1
+mkReStar (ReZero) = mkReWord []
+mkReStar (ReWord []) = mkReWord []
+mkReStar (ReStar re1) = mkReStar re1
+mkReStar (ReDagger re1) = mkReStar re1
+mkReStar (ReQuest re1) = mkReStar re1
+mkReStar re1 = ReStar re1
 
 mkReDagger :: RegEx -> RegEx
-mkReDagger re1 = re1 `seq` ReDagger re1
+mkReDagger (ReZero) = mkReWord []
+mkReDagger (ReWord []) = mkReWord []
+mkReDagger (ReStar re1) = mkReStar re1
+mkReDagger (ReDagger re1) = mkReDagger re1
+mkReDagger (ReQuest re1) = mkReStar re1
+mkReDagger re1 = ReDagger re1
 
 mkReQuest :: RegEx -> RegEx
-mkReQuest re1 = re1 `seq` ReQuest re1
+mkReQuest (ReZero) = mkReWord []
+mkReQuest (ReWord []) = mkReWord []
+mkReQuest (ReStar re1) = mkReStar re1
+mkReQuest (ReDagger re1) = mkReStar re1
+mkReQuest (ReQuest re1) = mkReQuest re1
+mkReQuest re1 = ReQuest re1
 
 mkReCharSet :: CharSet -> RegEx
 mkReCharSet chs = chs `seq` ReCharSet chs
+
+differentiate :: RegEx -> Char -> RegEx
+differentiate (ReZero) ch = mkReZero
+differentiate (ReUnion re1 re2) ch = mkReUnion (differentiate re1 ch) (differentiate re2 ch)
+differentiate (ReWord str1) ch = if null str1 then mkReZero else if head str1 == ch then mkReWord (tail str1) else mkReZero
+differentiate (ReConcat re1 re2) ch = mkReUnion (mkReConcat (differentiate re1 ch) re2) (if isNullable re1 then differentiate re2 ch else mkReZero)
+differentiate (ReStar re1) ch = mkReConcat (differentiate re1 ch) (mkReStar re1)
+differentiate (ReDagger re1) ch = differentiate (mkReConcat re1 (mkReStar re1)) ch
+differentiate (ReQuest re1) ch = differentiate (mkReUnion re1 (mkReWord [])) ch
+differentiate (ReCharSet chs1) ch = if ch `Set.member` runCharSet chs1 then mkReWord [] else mkReZero
+
+runRegEx :: RegEx -> String -> Bool
+runRegEx = curry (isNullable . uncurry (List.foldl' differentiate))
 
 isNullable :: RegEx -> Bool
 isNullable (ReZero) = False
@@ -326,39 +361,37 @@ isNullable (ReQuest re1) = True
 isNullable (ReCharSet chs1) = False
 
 implies :: RegEx -> RegEx -> Bool
-re1 `implies` re2
-    | re1 == re2 = True
-    | otherwise = dispatch re1 re2
-    where
-        dispatch :: RegEx -> RegEx -> Bool
-        dispatch (ReZero) re1 = True
-        dispatch (ReUnion re1 re2) re3 = re1 `implies` re3 && re2 `implies` re3
-        dispatch (ReWord []) re1 = isNullable re1
-        dispatch (ReCharSet chs1) (ReCharSet chs2) = runCharSet chs1 `Set.isSubsetOf` runCharSet chs2
-        dispatch (ReCharSet chs1) (ReWord [ch2]) = runCharSet chs1 `Set.isSubsetOf` Set.singleton ch2
-        dispatch (ReWord [ch1]) (ReCharSet chs2) = ch1 `Set.member` runCharSet chs2
-        dispatch (ReStar re1) (ReStar re2) = re1 `implies` re2
-        dispatch (ReStar re1) (ReDagger re2) = isNullable re2 && re1 `implies` ReStar re2
-        dispatch (ReStar re1) (ReQuest re2) = ReStar re1 `implies` re2
-        dispatch (ReDagger re1) (ReStar re2) = re1 `implies` re2
-        dispatch (ReDagger re1) (ReDagger re2) = re1 `implies` re2
-        dispatch (ReDagger re1) (ReQuest re2) = ReStar re1 `implies` re2
-        dispatch (ReQuest re1) (ReStar re2) = re1 `implies` ReStar re2
-        dispatch (ReQuest re1) (ReDagger re2) = isNullable re2 && re1 `implies` ReStar re2
-        dispatch (ReQuest re1) (ReQuest re2) = re1 `implies` re2
-        dispatch (ReConcat re1 re2) (ReStar re3) = re1 `implies` ReStar re3 && re2 `implies` ReStar re3
-        dispatch (ReConcat re1 re2) (ReDagger re3) = (re1 `implies` ReDagger re3 && re2 `implies` ReStar re3) || (re1 `implies` ReStar re3 && re2 `implies` ReDagger re3)
-        dispatch re1 (ReUnion re2 re3) = re1 `implies` re2 || re1 `implies` re3
-        dispatch re1 (ReStar re2) = re1 `implies` ReWord [] || re1 `implies` re2
-        dispatch re1 (ReDagger re2) = re1 `implies` re2
-        dispatch re1 (ReQuest re2) = re1 `implies` ReWord [] || re1 `implies` re2
-        dispatch re1 re2 = False
+implies = go where
+    go :: RegEx -> RegEx -> Bool
+    go re1 re2 = re1 == re2 || dispatch re1 re2
+    dispatch :: RegEx -> RegEx -> Bool
+    dispatch (ReZero) re1 = True
+    dispatch (ReUnion re1 re2) re3 = re1 `implies` re3 && re2 `implies` re3
+    dispatch (ReWord str1) re2 = runRegEx re2 str1
+    dispatch (ReCharSet chs1) (ReCharSet chs2) = runCharSet chs1 `Set.isSubsetOf` runCharSet chs2
+    dispatch (ReCharSet chs1) (ReWord [ch2]) = runCharSet chs1 `Set.isSubsetOf` Set.singleton ch2
+    dispatch (ReStar re1) (ReStar re2) = re1 `implies` re2
+    dispatch (ReStar re1) (ReDagger re2) = isNullable re2 && re1 `implies` ReStar re2
+    dispatch (ReStar re1) (ReQuest re2) = ReStar re1 `implies` re2
+    dispatch (ReDagger re1) (ReStar re2) = re1 `implies` re2
+    dispatch (ReDagger re1) (ReDagger re2) = re1 `implies` re2
+    dispatch (ReDagger re1) (ReQuest re2) = ReStar re1 `implies` re2
+    dispatch (ReQuest re1) (ReStar re2) = re1 `implies` ReStar re2
+    dispatch (ReQuest re1) (ReDagger re2) = isNullable re2 && re1 `implies` ReStar re2
+    dispatch (ReQuest re1) (ReQuest re2) = re1 `implies` re2
+    dispatch (ReConcat re1 re2) (ReStar re3) = re1 `implies` ReStar re3 && re2 `implies` ReStar re3
+    dispatch (ReConcat re1 re2) (ReDagger re3) = (re1 `implies` ReDagger re3 && re2 `implies` ReStar re3) || (re1 `implies` ReStar re3 && re2 `implies` ReDagger re3)
+    dispatch re1 (ReUnion re2 re3) = re1 `implies` re2 || re1 `implies` re3
+    dispatch re1 (ReStar re2) = re1 `implies` ReWord [] || re1 `implies` re2
+    dispatch re1 (ReDagger re2) = re1 `implies` re2
+    dispatch re1 (ReQuest re2) = re1 `implies` ReWord [] || re1 `implies` re2
+    dispatch re1 re2 = False
 
 equiv :: RegEx -> RegEx -> Bool
 re1 `equiv` re2 = re1 `implies` re2 && re2 `implies` re1
 
 reduceRegEx :: RegEx -> RegEx
-reduceRegEx = go4 . go3 . go2 . go1 where
+reduceRegEx = go3 . go2 . go1 where
     dropLast :: [x] -> [x]
     dropLast [] = []
     dropLast [x1] = []
@@ -403,14 +436,6 @@ reduceRegEx = go4 . go3 . go2 . go1 where
             str1' -> mkReWord str1'
     makeReConcat1 :: RegEx -> RegEx -> RegEx
     makeReConcat1 re1 re2
-        | ReZero <- re1
-        = mkReZero
-        | ReZero <- re2
-        = mkReZero
-        | ReWord [] <- re1
-        = re2
-        | ReWord [] <- re2
-        = re1
         | ReConcat re3 re4 <- re2
         = mkReConcat (mkReConcat re1 re3) re4
         | otherwise
@@ -546,15 +571,7 @@ reduceRegEx = go4 . go3 . go2 . go1 where
         | otherwise
         = makeReConcat1 re1 re2
     makeReStar2 :: RegEx -> RegEx
-    makeReStar2 re1
-        | ReStar re2 <- re1
-        = makeReStar2 re2
-        | ReDagger re2 <- re1
-        = makeReStar2 re2
-        | ReQuest re2 <- re1
-        = makeReStar2 re2
-        | otherwise
-        = makeReStar1 re1
+    makeReStar2 = mkReStar
     makeReDagger2 :: RegEx -> RegEx
     makeReDagger2 = mkReDagger
     makeReQuest2 :: RegEx -> RegEx
@@ -654,8 +671,6 @@ reduceRegEx = go4 . go3 . go2 . go1 where
     matchPrefix re1 res2 = if re1 `equiv` head res2 then return (tail res2) else Nothing
     matchSuffix :: RegEx -> [RegEx] -> Maybe [RegEx]
     matchSuffix re1 res2 = if re1 `equiv` last res2 then return (dropLast res2) else Nothing
-    go4 :: RegEx -> RegEx
-    go4 = id
 
 makeJumpRegexTable :: DFA -> Map.Map (ParserS, ParserS) RegEx
 makeJumpRegexTable (DFA q0 qfs delta markeds) = makeClosure (length qs) where

@@ -196,7 +196,7 @@ genParser blocks = go where
                 Nothing -> throwE ("the terminal symbol " ++ pprint 0 nsym " hasn't declared.")
                 Just n -> return n
         checkTerminalOccurence (Set.fromList [ ts | (lhs, Just pairs) <- cache', (rhs, prec) <- pairs, TS ts <- rhs ]) (Set.fromList [ tsym | TerminalInfo patn tsym prec assoc <- terminal_infos ])
-        lalr1 <- getLALR1 (CFGrammar { getStartSym = start_symbol, getTerminalSyms = terminal_symbols, getProductionRules = production_rules })
+        (collection, lalr1) <- makeCollectionAndLALR1Parser (CFGrammar { getStartSym = start_symbol, getTerminalSyms = terminal_symbols, getProductionRules = production_rules })
         fmap (strcat . snd) $ runWriterT $ do
             tellLine (ppunc "\n" (map strstr hs_head))
             tellLine (strstr "import qualified Control.Monad.Trans.Class as Y")
@@ -415,4 +415,5 @@ genParser blocks = go where
                 ]
             tellLine (strstr "        , getReduceTable = YMap.fromAscList " . plist 12 table2)
             tellLine (strstr "        }")
-            tellLine (strstr "")
+            tellLine (strstr "{-" . nl . pprint 0 collection . strstr "-}" . nl)
+            return ()

@@ -34,3 +34,6 @@ main = do
     putStrLn "Enter the path:"
     dir <- getLine
     runPGS dir
+
+test :: IO ()
+test = runPGS "src/Aladdin/Front/Analyzer/Parser"
