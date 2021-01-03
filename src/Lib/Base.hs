@@ -52,11 +52,7 @@ autoPM :: Read a => Precedence -> PM a
 autoPM = PM . readsPrec
 
 acceptCharIf :: (Char -> Bool) -> PM Char
-acceptCharIf condition = PM go where
-    go :: String -> [(Char, String)]
-    go (ch : str)
-        | condition ch = return (ch, str)
-    go _ = []
+acceptCharIf condition = PM $ \str -> let ch = head str in if null str then [] else if condition ch then [(ch, tail str)] else []
 
 consumeStr :: String -> PM ()
 consumeStr prefix = PM $ \str -> let n = length prefix in if take n str == prefix then return ((), drop n str) else []
