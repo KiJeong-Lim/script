@@ -198,8 +198,8 @@ makeMinimalDFA (DFA q0 qfs deltas markeds) = result where
     initialKlasses = (theSetOfAllStates `Set.difference` Map.keysSet qfs) : Map.elems (foldr loop1 Map.empty (Map.toList qfs)) where
         loop1 :: (ParserS, ParserS) -> Map.Map ParserS (Set.Set ParserS) -> Map.Map ParserS (Set.Set ParserS)
         loop1 (qf, label) mapsto = maybe (Map.insert label (Set.singleton qf) mapsto) (\qfs -> Map.update (const (Just (Set.insert qf qfs))) label mapsto) (Map.lookup label mapsto)
-    theClasses :: [Set.Set ParserS]
-    theClasses = go initialKlasses initialKlasses where
+    finalKlasses :: [Set.Set ParserS]
+    finalKlasses = go initialKlasses initialKlasses where
         go :: [Set.Set ParserS] -> [Set.Set ParserS] -> [Set.Set ParserS]
         go result stack
             | null stack = result
@@ -223,7 +223,7 @@ makeMinimalDFA (DFA q0 qfs deltas markeds) = result where
                     difference :: Set.Set ParserS
                     difference = klass `Set.difference` focused
     convert :: ParserS -> ParserS
-    convert q = head [ i | (i, qs) <- zip [0, 1 .. ] theClasses, q `Set.member` qs ]
+    convert q = head [ i | (i, qs) <- zip [0, 1 .. ] finalKlasses, q `Set.member` qs ]
     result :: DFA
     result = DFA
         { getInitialQOfDFA = convert q0
