@@ -124,7 +124,7 @@ getUnitedNFAfromREs regexes = runIdentity go where
             }
 
 makeDFAfromNFA :: NFA -> DFA
-makeDFAfromNFA (NFA q0 qfs deltas markeds) = runIdentity go where
+makeDFAfromNFA (NFA q0 qfs deltas markeds) = runIdentity result where
     eClosure :: Set.Set ParserS -> Set.Set ParserS
     eClosure qs = if qs == qs' then qs' else eClosure qs' where
         qs' :: Set.Set ParserS
@@ -154,8 +154,8 @@ makeDFAfromNFA (NFA q0 qfs deltas markeds) = runIdentity go where
             Just p' -> do
                 put (Map.insert (q', ch) p' deltas')
                 drawGraph mapOldToNew triples
-    loop :: Map.Map (Set.Set ParserS) ParserS -> StateT (Map.Map (ParserS, Char) ParserS) Identity (Map.Map ParserS ParserS, Map.Map ParserS (Set.Set ParserS))
-    loop mapOldToNew = do
+    go :: Map.Map (Set.Set ParserS) ParserS -> StateT (Map.Map (ParserS, Char) ParserS) Identity (Map.Map ParserS ParserS, Map.Map ParserS (Set.Set ParserS))
+    go mapOldToNew = do
         mapOldToNew' <- drawGraph mapOldToNew ((,) <$> Map.toList mapOldToNew <*> Set.toList theCsUniv)
         if mapOldToNew == mapOldToNew'
             then return
@@ -177,11 +177,11 @@ makeDFAfromNFA (NFA q0 qfs deltas markeds) = runIdentity go where
                     | (i, q) <- Map.toAscList markeds
                     ]
                 )
-            else loop mapOldToNew'
-    go :: Identity DFA
-    go = do
+            else go mapOldToNew'
+    result :: Identity DFA
+    result = do
         let q0' = 0
-        ((qfs', markeds'), deltas') <- runStateT (loop (Map.singleton (eClosure (Set.singleton q0)) q0')) Map.empty
+        ((qfs', markeds'), deltas') <- runStateT (go (Map.singleton (eClosure (Set.singleton q0)) q0')) Map.empty
         qfs' `seq` markeds' `seq` deltas' `seq` return (DFA q0' qfs' deltas' markeds')
 
 makeMinimalDFA :: DFA -> DFA
@@ -191,26 +191,28 @@ makeMinimalDFA (DFA q0 qfs deltas markeds) = result where
         [ Set.singleton q0
         , Map.keysSet qfs
         , Set.map fst (Map.keysSet deltas)
+        , Set.fromList (Map.elems deltas)
         ]
     theCharSet :: Set.Set Char
     theCharSet = Set.map snd (Map.keysSet deltas)
     initialKlasses :: [Set.Set ParserS]
     initialKlasses = (theSetOfAllStates `Set.difference` Map.keysSet qfs) : Map.elems (foldr loop1 Map.empty (Map.toList qfs)) where
         loop1 :: (ParserS, ParserS) -> Map.Map ParserS (Set.Set ParserS) -> Map.Map ParserS (Set.Set ParserS)
-        loop1 (qf, label) mapsto = maybe (Map.insert label (Set.singleton qf) mapsto) (\qfs -> Map.update (const (Just (Set.insert qf qfs))) label mapsto) (Map.lookup label mapsto)
+        loop1 (qf, label) = Map.alter (Just . maybe (Set.singleton qf) (Set.insert qf)) label
     finalKlasses :: [Set.Set ParserS]
-    finalKlasses = go initialKlasses initialKlasses where
-        go :: [Set.Set ParserS] -> [Set.Set ParserS] -> [Set.Set ParserS]
-        go result stack
+    finalKlasses = splitKlasses initialKlasses initialKlasses where
+        splitKlasses :: [Set.Set ParserS] -> [Set.Set ParserS] -> [Set.Set ParserS]
+        splitKlasses result stack
             | null stack = result
-            | otherwise = uncurry go (Set.foldr (uncurry . loop1 (head stack)) (result, tail stack) theCharSet)
+            | otherwise = uncurry splitKlasses (Set.foldr (uncurry . loop1 (head stack)) (result, tail stack) theCharSet)
         loop1 :: Set.Set ParserS -> Char -> [Set.Set ParserS] -> [Set.Set ParserS] -> ([Set.Set ParserS], [Set.Set ParserS])
-        loop1 top ch currentKlasses = foldr (>=>) return (map loop2 currentKlasses) where
+        loop1 top ch = foldr (>=>) return . map loop2 where
             focused :: Set.Set ParserS
             focused = Set.filter (\q -> maybe False (\p -> p `Set.member` top) (Map.lookup (q, ch) deltas)) theSetOfAllStates
             loop2 :: Set.Set ParserS -> [Set.Set ParserS] -> ([Set.Set ParserS], [Set.Set ParserS])
             loop2 klass stack
-                | Set.null intersection || Set.null difference = ([klass], stack)
+                | Set.null intersection = ([klass], stack)
+                | Set.null difference = ([klass], stack)
                 | otherwise = mkstrict
                     ( [intersection, difference]
                     , case klass `List.elemIndex` stack of
@@ -223,7 +225,11 @@ makeMinimalDFA (DFA q0 qfs deltas markeds) = result where
                     difference :: Set.Set ParserS
                     difference = klass `Set.difference` focused
     convert :: ParserS -> ParserS
-    convert q = head [ i | (i, qs) <- zip [0, 1 .. ] finalKlasses, q `Set.member` qs ]
+    convert q = head
+        [ q'
+        | (q', qs) <- zip [0, 1 .. ] finalKlasses
+        , q `Set.member` qs
+        ]
     result :: DFA
     result = DFA
         { getInitialQOfDFA = convert q0
@@ -239,31 +245,28 @@ makeMinimalDFA (DFA q0 qfs deltas markeds) = result where
         }
 
 deleteDeadStates :: DFA -> DFA
-deleteDeadStates (DFA q0 qfs deltas markeds) = runIdentity go where
-    edges :: Set.Set (ParserS, ParserS)
-    edges = Set.fromList [ (p, q) | ((q, ch), p) <- Map.toList deltas ]
-    loop :: [ParserS] -> StateT (Set.Set ParserS) Identity ()
-    loop ps = do
-        forM ps $ \p -> do
-            visiteds <- get
-            when (not (p `Set.member` visiteds)) $ do
-                modify (Set.insert p)
-                loop [ q' | (p', q') <- Set.toList edges, p == p' ]
-        return ()
-    go :: Identity DFA
-    go = do
-        (_, winners) <- runStateT (loop (Set.toList (Map.keysSet qfs))) Set.empty
-        return $ DFA
-            { getInitialQOfDFA = q0
-            , getFinalQsOfDFA = qfs
-            , getTransitionsOfDFA = Map.fromAscList
-                [ ((q, ch), p)
-                | ((q, ch), p) <- Map.toAscList deltas
-                , q `Set.member` winners
-                , p `Set.member` winners
-                ]
-            , getMarkedQsOfDFA = Map.map (Set.filter (\q -> q `Set.member` winners)) markeds
-            }
+deleteDeadStates (DFA q0 qfs deltas markeds) = result where
+    edges :: Map.Map ParserS (Set.Set ParserS)
+    edges = foldr go Map.empty [ (p, q) | ((q, ch), p) <- Map.toList deltas ] where
+        go :: (ParserS, ParserS) -> Map.Map ParserS (Set.Set ParserS) -> Map.Map ParserS (Set.Set ParserS)
+        go (p, q) = Map.alter (Just . maybe (Set.singleton q) (Set.insert q)) p
+    winners :: Set.Set ParserS
+    winners = go (Set.toAscList (Map.keysSet qfs)) Set.empty where
+        go :: [ParserS] -> Set.Set ParserS -> Set.Set ParserS
+        go [] ps = ps
+        go (q : qs) ps = if q `Set.member` ps then go qs ps else go (maybe [] Set.toAscList (Map.lookup q edges) ++ qs) (Set.insert q ps)
+    result :: DFA
+    result = DFA
+        { getInitialQOfDFA = q0
+        , getFinalQsOfDFA = qfs
+        , getTransitionsOfDFA = Map.fromAscList
+            [ ((q, ch), p)
+            | ((q, ch), p) <- Map.toAscList deltas
+            , q `Set.member` winners
+            , p `Set.member` winners
+            ]
+        , getMarkedQsOfDFA = Map.map (Set.filter (\q -> q `Set.member` winners)) markeds
+        }
 
 makeDFAfromREs :: [(RegEx, Maybe RegEx)] -> DFA
 makeDFAfromREs = deleteDeadStates . makeMinimalDFA . makeDFAfromNFA . getUnitedNFAfromREs
