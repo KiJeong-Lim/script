@@ -191,17 +191,21 @@ makeMinimalDFA (DFA q0 qfs deltas markeds) = result where
         [ Set.singleton q0
         , Map.keysSet qfs
         , Set.map fst (Map.keysSet deltas)
-        ] 
+        ]
+    theCharSet :: Set.Set Char
+    theCharSet = Set.map snd (Map.keysSet deltas)
+    initialKlasses :: [Set.Set ParserS]
+    initialKlasses = (theSetOfAllStates `Set.difference` Map.keysSet qfs) : Map.elems (foldr loop1 Map.empty (Map.toList qfs)) where
+        loop1 :: (ParserS, ParserS) -> Map.Map ParserS (Set.Set ParserS) -> Map.Map ParserS (Set.Set ParserS)
+        loop1 (qf, label) mapsto = maybe (Map.insert label (Set.singleton qf) mapsto) (\qfs -> Map.update (const (Just (Set.insert qf qfs))) label mapsto) (Map.lookup label mapsto)
     theClasses :: [Set.Set ParserS]
-    theClasses = go init init where
+    theClasses = go initialKlasses initialKlasses where
         go :: [Set.Set ParserS] -> [Set.Set ParserS] -> [Set.Set ParserS]
         go result stack
             | null stack = result
-            | otherwise = uncurry go (foldr (uncurry . loop1 (head stack)) (result, tail stack) (Set.map snd (Map.keysSet deltas)))
-        init :: [Set.Set ParserS]
-        init = (theSetOfAllStates `Set.difference` Map.keysSet qfs) : Map.elems (foldr loop3 Map.empty (Map.toList qfs))
+            | otherwise = uncurry go (Set.foldr (uncurry . loop1 (head stack)) (result, tail stack) theCharSet)
         loop1 :: Set.Set ParserS -> Char -> [Set.Set ParserS] -> [Set.Set ParserS] -> ([Set.Set ParserS], [Set.Set ParserS])
-        loop1 top ch result = foldr (>=>) return (map loop2 result) where
+        loop1 top ch currentKlasses = foldr (>=>) return (map loop2 currentKlasses) where
             focused :: Set.Set ParserS
             focused = Set.filter (\q -> maybe False (\p -> p `Set.member` top) (Map.lookup (q, ch) deltas)) theSetOfAllStates
             loop2 :: Set.Set ParserS -> [Set.Set ParserS] -> ([Set.Set ParserS], [Set.Set ParserS])
@@ -211,15 +215,13 @@ makeMinimalDFA (DFA q0 qfs deltas markeds) = result where
                     ( [intersection, difference]
                     , case klass `List.elemIndex` stack of
                         Nothing -> if Set.size intersection <= Set.size difference then intersection : stack else difference : stack
-                        Just idx -> take idx stack ++ [intersection, difference] ++ drop (idx + 1) stack
+                        Just idx -> [intersection, difference] ++ take idx stack ++ drop (idx + 1) stack
                     )
                 where
                     intersection :: Set.Set ParserS
                     intersection = klass `Set.intersection` focused
                     difference :: Set.Set ParserS
                     difference = klass `Set.difference` focused
-        loop3 :: (ParserS, ParserS) -> Map.Map ParserS (Set.Set ParserS) -> Map.Map ParserS (Set.Set ParserS)
-        loop3 (qf, label) mapsto = maybe (Map.insert label (Set.singleton qf) mapsto) (\qfs -> Map.update (const (Just (Set.insert qf qfs))) label mapsto) (Map.lookup label mapsto)
     convert :: ParserS -> ParserS
     convert q = head [ i | (i, qs) <- zip [0, 1 .. ] theClasses, q `Set.member` qs ]
     result :: DFA
