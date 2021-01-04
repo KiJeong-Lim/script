@@ -15,60 +15,10 @@ library
     default-language: Haskell2010
     build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
     exposed-modules:
-        Lib.Algorithm.Sorting
-        Lib.Base
-        Lib.Text.PC
-        Lib.Text.PC.Expansion
-        Lib.Text.Ppr
-    other-modules:
-        Lib.Text.PC.Base
-        Lib.Text.PC.Check
-        Lib.Text.PC.Loc
-        Lib.Text.PC.Regex
-        Lib.Text.Ppr.Viewer
-executable LGS
-    hs-source-dirs: src
-    default-language: Haskell2010
-    build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
-    main-is: LGS/Main.hs
-    other-modules:
-        LGS.Make
-        LGS.Read
-        LGS.Show
-        LGS.Util
-        Lib.Algorithm.Sorting
-        Lib.Base
-        Lib.Text.PC
-        Lib.Text.PC.Base
-        Lib.Text.PC.Check
-        Lib.Text.PC.Expansion
-        Lib.Text.PC.Loc
-        Lib.Text.PC.Regex
-        Lib.Text.Ppr
-        Lib.Text.Ppr.Viewer
-executable PGS
-    hs-source-dirs: src
-    default-language: Haskell2010
-    build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
-    main-is: PGS/Main.hs
-    other-modules:
-        Lib.Algorithm.Sorting
-        Lib.Base
-        Lib.Text.PC
-        Lib.Text.PC.Base
-        Lib.Text.PC.Check
-        Lib.Text.PC.Expansion
-        Lib.Text.PC.Loc
-        Lib.Text.PC.Regex
-        Lib.Text.Ppr
-        Lib.Text.Ppr.Viewer
-        PGS.Make
-        PGS.Read
-        PGS.Show
-        PGS.Util
 executable Aladdin
     hs-source-dirs: src
     default-language: Haskell2010
     build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
     main-is: Aladdin/Main.hs
     other-modules:
+        Aladdin.Front.Header
