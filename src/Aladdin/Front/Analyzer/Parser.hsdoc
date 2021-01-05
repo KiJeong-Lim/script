@@ -1,0 +1,31 @@
+\output-ext = hs
+
+\load-pkg = ParserGenerator
+
+\def-parser = "runParser"
+{
+    \begin{token-decls}
+        \item[ `module' ] prec = 0, assoc = none.
+        \item[ `import' ] prec = 0, assoc = none.
+        \item[ `smallid' ] prec = 50, assoc = none.
+    \end{token-decls}
+    \def-token-scope = start
+    {
+        \item[ "import" ] `import'
+        "--" [. \ '\n']+ -> ;
+    }
+    \def-token-scope = "import"
+    {
+        
+    }
+}
+
+\begin{document}
+
+    \begin{code}
+        module Aladdin.Front.Analyzer.Lexer where
+    \end{code}
+
+    \gen-parser{"runParser"}
+    
+\end{document}

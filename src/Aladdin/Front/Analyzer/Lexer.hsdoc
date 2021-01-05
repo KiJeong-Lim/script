@@ -1,0 +1,20 @@
+\document-class{hs}
+
+\use-package{LGS}
+
+\def-cs $small-letters = 'a'-'z'
+\def-cs $large-letters = 'A'-'Z'
+\def-cs $digits = '0'-'9'
+
+\def-re $Char = [. \ '\n' \ '\\' \ '\"'] + "\\n" + "\\\\" + "\\\"" + "\\\'" + "\\t"
+\def-re $SmallId = [$small-letters] [$small-letters $digits '_' $large-letters]*
+\def-re $LargeId = [$large-letters] [$small-letters $digits '_' $large-letters]* + "_"
+
+\def-lexer = "runAladdinLexer"
+{
+
+}
+
+\begin{document}
+
+\end{document}
