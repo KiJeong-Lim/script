@@ -15,6 +15,7 @@ import Lib.Base
 
 data Oper a
     = Prefix String a
+    | Suffix a String
     | InfixL a String a
     | InfixR a String a
     | InfixN a String a
@@ -56,6 +57,7 @@ instance Outputable ViewNode where
         go (ViewTApp viewer1 viewer2) = parenthesize 10 (pprint 10 viewer1 . strstr " " . pprint 11 viewer2)
         go (ViewOper (oper, prec')) = case oper of
             Prefix str viewer1 -> parenthesize prec' (strstr str . pprint prec' viewer1)
+            Suffix viewer1 str -> parenthesize prec' (pprint prec' viewer1 . strstr str)
             InfixL viewer1 str viewer2 -> parenthesize prec' (pprint prec' viewer1 . strstr str . pprint (prec' + 1) viewer2)
             InfixR viewer1 str viewer2 -> parenthesize prec' (pprint (prec' + 1) viewer1 . strstr str . pprint prec' viewer2)
             InfixN viewer1 str viewer2 -> parenthesize prec' (pprint (prec' + 1) viewer1 . strstr str . pprint (prec' + 1) viewer2)
@@ -74,8 +76,8 @@ constructViewer = fst . runIdentity . uncurry (runStateT . formatView . eraseTyp
     makeView :: [Int] -> TermNode -> StateT Int Identity ViewNode
     makeView vars (LVar var) = case var of
         LV_ty_var v -> return (ViewTVar ("TV_" ++ show v))
-        LV_Unique v -> return (ViewTVar ("V_" ++ show v))
-        LV_Named v -> return (ViewTVar v)
+        LV_Unique v -> return (ViewLVar ("V_" ++ show v))
+        LV_Named v -> return (ViewLVar v)
     makeView vars (NCon con) = case con of
         DC data_constructor -> case data_constructor of
             DC_LO logical_operator -> case logical_operator of
@@ -122,6 +124,7 @@ constructViewer = fst . runIdentity . uncurry (runStateT . formatView . eraseTyp
     eraseType (ViewIApp t1 t2)
         | isType t2 = eraseType t1
         | otherwise = ViewIApp (eraseType t1) (eraseType t2)
+    eraseType (ViewNatL nat) = ViewNatL nat
     eraseType (ViewChrL chr) = ViewChrL chr
     eraseType (ViewDCon c) = ViewDCon c
     checkOper :: String -> Maybe (Oper (), Precedence)
