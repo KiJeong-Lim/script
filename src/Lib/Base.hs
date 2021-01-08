@@ -74,7 +74,7 @@ pindent space str1 = if space < 0 then str1 else replicate space ' ' ++ str1
 
 ppunc :: String -> [String -> String] -> String -> String
 ppunc str [] = id
-ppunc str (delta : deltas) = delta . foldr (\delta0 -> \acc -> strstr str . delta0 . acc) id deltas
+ppunc str (delta1 : deltas2) = delta1 . foldr (\delta2 -> \acc -> strstr str . delta2 . acc) id deltas2
 
 plist :: Indentation -> [String -> String] -> String -> String
 plist space [] = strstr "[]"
