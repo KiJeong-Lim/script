@@ -54,23 +54,6 @@ neighbor H1 H2 (H1 :: H2 :: _) :- true.
 neighbor H1 H2 (H2 :: H1 :: _) :- true.
 neighbor H1 H2 (_ :: Hs) :- neighbor H1 H2 Hs.
 
-type distincts (list A -> o).
-distincts [] :- true.
-distincts (X :: Xs) :- distinct X Xs, distincts Xs.
-
-type distinct (A -> list A -> o).
-distinct X [] :- true.
-distinct X (X :: Xs) :- !, fail.
-distinct X (_ :: Xs) :- distinct X Xs.
-
-type houses (list house -> o).
-houses [house Country1 Beverage1 Cigarette1 Animal1 Color1, house Country2 Beverage2 Cigarette2 Animal2 Color2, house Country3 Beverage3 Cigarette1 Animal3 Color3, house Country4 Beverage4 Cigarette1 Animal4 Color4, house Country5 Beverage5 Cigarette5 Animal5 Color5] :-
-    distincts [Country1, Country2, Country3, Country4, Country5],
-    distincts [Beverage1, Beverage2, Beverage3, Beverage4, Beverage5],
-    distincts [Cigarette1, Cigarette2, Cigarette3, Cigarette4, Cigarette5],
-    distincts [Animal1, Animal2, Animal3, Animal4, Animal5],
-    distincts [Color1, Color2, Color3, Color4, Color5].
-
 type answer (list house -> o).
 answer Houses :-
     copy [_, _, _, _, _] Houses,
