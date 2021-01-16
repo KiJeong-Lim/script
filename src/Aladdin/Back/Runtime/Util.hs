@@ -75,6 +75,7 @@ showsCurrentState fvs ctx cells stack = strcat
             ]
         | (i, item) <- zip [1, 2 .. length stack] stack
         ]
+    , strstr "--------------------------------" . nl
     ]
 
 mkCell :: [Fact] -> ScopeLevel -> Goal -> Cell

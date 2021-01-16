@@ -33,7 +33,7 @@ quitWithMsg str = do
 runREPL :: Program TermNode -> UniqueGenT IO ()
 runREPL program = lift (newIORef False) >>= go where
     mkRuntimeEnv :: IORef Debugging -> TermNode -> IO RuntimeEnv
-    mkRuntimeEnv isDebugging query = makeEnv where
+    mkRuntimeEnv isDebugging query = return (RuntimeEnv { _PutStr = runInteraction, _Answer = printAnswer }) where
         runInteraction :: String -> IO ()
         runInteraction str = do
             debugging <- readIORef isDebugging
@@ -48,7 +48,7 @@ runREPL program = lift (newIORef False) >>= go where
                             modifyIORef isDebugging not
                             debugging <- readIORef isDebugging
                             putStrLn "Debugging mode off."
-                        _ -> putStrLn (replicate 64 '-')
+                        _ -> return ()
                 else return ()
         printAnswer :: Context -> IO RunMore
         printAnswer final_ctx
@@ -61,16 +61,7 @@ runREPL program = lift (newIORef False) >>= go where
                     ]
                 askToRunMore
             | otherwise = do
-                putStrLn "The remaining disagreements are:"
-                sequence
-                    [ putStrLn ("  " ++ showsPrec 0 lhs (" =?= " ++ showsPrec 0 rhs "."))
-                    | lhs :=?=: rhs <- _LeftConstraints final_ctx
-                    ]
-                putStrLn "The binding is:"
-                sequence
-                    [ putStrLn ("  " ++ showsPrec 0 (mkLVar v) (" := " ++ showsPrec 0 t "."))
-                    | (v, t) <- Map.toList (unVarBinding (_TotalVarBinding final_ctx))
-                    ]
+                printDisagreements
                 askToRunMore
             where
                 isShort :: Bool
@@ -84,8 +75,19 @@ runREPL program = lift (newIORef False) >>= go where
                     if str == "Y" || str == "y"
                         then return True
                         else return False
-        makeEnv :: IO RuntimeEnv
-        makeEnv = return (RuntimeEnv { _PutStr = runInteraction, _Answer = printAnswer })
+                printDisagreements :: IO ()
+                printDisagreements = do
+                    putStrLn "The remaining disagreements are:"
+                    sequence
+                        [ putStrLn ("  " ++ showsPrec 0 lhs (" =?= " ++ showsPrec 0 rhs "."))
+                        | lhs :=?=: rhs <- _LeftConstraints final_ctx
+                        ]
+                    putStrLn "The binding is:"
+                    sequence
+                        [ putStrLn ("  " ++ showsPrec 0 (mkLVar v) (" := " ++ showsPrec 0 t "."))
+                        | (v, t) <- Map.toList (unVarBinding (_TotalVarBinding final_ctx))
+                        ]
+                    return ()
     go :: IORef Debugging -> UniqueGenT IO ()
     go isDebugging = do
         query0 <- lift $ getLine

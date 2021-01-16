@@ -1,0 +1,111 @@
+-- calculus of construction
+
+-- \begin{Implementing Type Theory in Higher Order Constraint Logic Programming}
+-- | Ferruccio Guidi.
+-- | Claudio Sacerdoti Coen.
+-- | Enrico Tassi.
+
+kind core (type).
+type uni (nat -> core).
+type all (core -> (core -> core) -> core).
+type app (core -> core -> core).
+type lam (core -> (core -> core) -> core).
+
+type eq (A -> A -> o).
+eq X X :- true.
+
+type leq (nat -> nat -> o).
+leq 0 N2 :-
+    true.
+leq (s N1) (s N2) :-
+    leq N1 N2.
+
+type lt (nat -> nat -> o).
+lt N1 N2 :-
+    leq N1 (s N2).
+
+type max (nat -> nat -> o).
+max N1 N2 N2 :-
+    leq N1 N2.
+max N1 N2 N1 :-
+    lt N2 N1.
+
+type of (core -> core -> core -> o).
+of (uni Lv1) (uni Lv2) (uni Lv1) :-
+    lt Lv1 Lv2.
+of (app M N) BN (app RM RKN) :-
+    of M TM RM,
+    match_arr TM A1 Bx,
+    of N A2 RN,
+    sub A2 A1,
+    eq BN (Bx RKN).
+of (lam A F) (arr A B) (lam RA RF) :-
+    of A SA RA,
+    match_sort SA (sort _),
+    pi (X\ of X RA X => of (F X) (B X) (RF X)),
+    of (arr RA B) _ _.
+of (arr A Bx) (sort K) (arr RA RB) :-
+    of A TA RA,
+    match_sort TA I,
+    pi (X\ of X RA X => of (Bx X) (TB X) (RB X), match_sort (TB X) J),
+    max I J K.  
+
+type whd1 (core -> core -> o).
+whd1 (app M N) R :-
+    whd M (lam _ F),
+    eq R (F N).
+
+type whd (core -> core -> o).
+whd A B :-
+    whd1 A A1,
+    !,
+    whd A1 B.
+whd X X :-
+    true.
+
+type match_sort (core -> nat -> o).
+match_sort T I :-
+    whd T (sort I).
+
+type match_arr (core -> core -> (core -> core) -> o).
+match_arr T A F :-
+    whd T (arr A F).
+
+type conv (core -> core -> o).
+conv A B :-
+    whd A A1,
+    whd B B1,
+    conv_whd A1 B1,
+    !.
+
+type conv_whd (core -> core -> o).
+conv_whd X X :-
+    !.
+conv_whd (app M1 N1) (app M2 N2) :-
+    conv M1 M2,
+    conv N1 N2.
+conv_whd (lam A1 F1) (lam A2 F2) :-
+    conv A1 A2,
+    pi (X\ conv (F1 X) (F2 X)).
+conv_whd (arr A1 F1) (arr A2 F2) :-
+    conv A1 A2,
+    pi (X\ conv (F1 X) (F2 X)).
+
+type sub (core -> core -> o).
+sub A B :-
+    whd A A1,
+    whd B B1,
+    sub_whd A1 B1,
+    !.
+
+type sub_whd (core -> core -> o).
+sub_whd A B :-
+    conv A B,
+    !.
+sub_whd (sort I) (sort J) :-
+    lt I J.
+sub_whd (arr A1 F1) (arr A2 F2) :-
+    conv A1 A2,
+    pi (X\ sub (F1 X) (F2 X)).
+
+-- \end{Implementing Type Theory in Higher Order Constraint Logic Programming}

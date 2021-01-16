@@ -98,6 +98,7 @@ constructViewer = fst . runIdentity . uncurry (runStateT . formatView . eraseTyp
             DC_ChrL chr -> return (ViewChrL chr)
             DC_NatL nat -> return (ViewNatL nat)
             DC_Succ -> return (ViewDCon "__s")
+            DC_Eq -> return (ViewDCon "=")
         TC type_constructor -> case type_constructor of
             TC_Arrow -> return (ViewTCon "->")
             TC_Unique uni -> return (ViewTCon ("tc_" ++ show uni))
@@ -135,6 +136,7 @@ constructViewer = fst . runIdentity . uncurry (runStateT . formatView . eraseTyp
     checkOper "=>" = Just (InfixR () " => " (), 2)
     checkOper "pi" = Just (Prefix "pi " (), 5)
     checkOper "sigma" = Just (Prefix "sigma " (), 5)
+    checkOper "=" = Just (InfixN () " = " (), 5)
     checkOper _ = Nothing
     formatView :: ViewNode -> StateT Int Identity ViewNode
     formatView (ViewDCon "[]") = return (ViewList [])
