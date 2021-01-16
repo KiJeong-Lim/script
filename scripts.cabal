@@ -5,9 +5,9 @@ description: Please see README.md
 homepage: https://github.com/KiJeong-Lim/scripts
 license: MIT
 license-file: LICENSE
-author: KiJeong-Lim
+author: KiJeong Lim
 maintainer: gijungdduk@naver.com
-copyright: 2020, KiJeong-Lim
+copyright: 2020-2021, KiJeong Lim
 build-type: Simple
 cabal-version: >= 1.10
 library
