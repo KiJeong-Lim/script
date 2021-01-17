@@ -302,7 +302,7 @@ genParser blocks = go where
                             sequence
                                 [ do
                                     let mkIndexErr idx = "the length of rhs is " ++ showsPrec 0 (length syms) (", but the index " ++ showsPrec 0 idx " is greater than or equal to it.")
-                                    des_rep <- fmap (ppunc  "            ") $ sequence
+                                    des_rep <- fmap (ppunc  "        ") $ sequence
                                         [ lift $ fmap strcat $ sequence
                                             [ case de of
                                                 DsStrLit str -> return (showsPrec 0 str)
