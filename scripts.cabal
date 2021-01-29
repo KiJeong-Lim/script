@@ -10,33 +10,37 @@ maintainer: gijungdduk@naver.com
 copyright: 2020-2021, KiJeong Lim
 build-type: Simple
 cabal-version: >= 1.10
-library Z
+library
     hs-source-dirs: src
     default-language: Haskell2010
-    build-depends: base >= 4.7 && < 5
+    build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
     exposed-modules:
+        Z.PC
+        Z.PM
     other-modules:
+        Z.PC.Base
+        Z.PC.Base.Test
 executable LGS
     hs-source-dirs: src
     default-language: Haskell2010
-    build-depends: base >= 4.7 && < 5
+    build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
     main-is: LGS/Main.hs
     other-modules:
 executable PGS
     hs-source-dirs: src
     default-language: Haskell2010
-    build-depends: base >= 4.7 && < 5
+    build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
     main-is: PGS/Main.hs
     other-modules:
 executable Aladdin
     hs-source-dirs: src
     default-language: Haskell2010
-    build-depends: base >= 4.7 && < 5
+    build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
     main-is: Aladdin/Main.hs
     other-modules:
 executable Jasmine
     hs-source-dirs: src
     default-language: Haskell2010
-    build-depends: base >= 4.7 && < 5
+    build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
     main-is: Jasmine/Main.hs
     other-modules:

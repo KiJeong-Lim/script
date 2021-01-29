@@ -1,14 +1,8 @@
-# Implementaion Notes on Z
+module Z.PM where
 
-# Parser monad
+import Control.Applicative
+import Control.Monad
 
-## Ordinary parser monad
-
-- `PM a ~ StateT String [] a`.
-
-### Implementation
-
-```hs
 newtype PM a
     = PM { unPM :: String -> [(a, String)] }
     deriving ()
@@ -37,18 +31,15 @@ instance MonadPlus PM where
 
 instance MonadFail PM where
     fail = const empty
-```
 
-### Properties
+autoPM :: Read a => Precedence -> PM a
+autoPM = PM . readsPrec
 
-- cannot report parsing-error.
+acceptCharIf :: (Char -> Bool) -> PM Char
+acceptCharIf condition = PM $ \str -> let ch = head str in if null str then [] else if condition ch then [(ch, tail str)] else []
 
-### Methods
+consumeStr :: String -> PM ()
+consumeStr prefix = PM $ \str -> let n = length prefix in if take n str == prefix then return ((), drop n str) else []
 
-- `autoPM :: Read a => Precedence -> PM a`
-
-- `acceptCharIf :: (Char -> Bool) -> PM Char`
-
-- `consumeStr :: String -> PM ()`
-
-- `matchPrefix :: String -> PM ()`
+matchPrefix :: String -> PM ()
+matchPrefix prefix = PM $ \str -> let n = length prefix in if take n str == prefix then return ((), str) else []
