@@ -1,8 +1,9 @@
-module Z.PC.Base where
+module Z.Text.PC.Base where
 
 import Control.Applicative
 import Control.Monad
-import Z.Algorithm.Sorting
+import Data.Function
+import Z.Algorithm.Sort
 
 data ParserBase chr val
     = PVal
@@ -13,9 +14,8 @@ data ParserBase chr val
         ([chr] -> ParserBase chr val)
     deriving ()
 
-
 instance Functor (ParserBase chr) where
-    fmap a2b p1 = bindPB p1 (returnPB . a2b)
+    fmap a2b = flip bindPB (returnPB . a2b)
 
 instance Applicative (ParserBase chr) where
     pure = returnPB
@@ -70,9 +70,7 @@ emptyPB :: ParserBase chr val
 emptyPB = PAlt []
 
 appendPB :: ParserBase chr val -> ParserBase chr val -> ParserBase chr val
-appendPB = go where
-    go :: ParserBase chr val -> ParserBase chr val -> ParserBase chr val
-    go p1 p2 = PAct $ \str0 -> PAlt (unPB p1 str0 ++ unPB p2 str0)
+appendPB p1 p2 = PAct $ \str0 -> PAlt (unPB p1 str0 ++ unPB p2 str0)
 
 mkPB :: ([chr] -> [(val, [chr])]) -> ParserBase chr val
 mkPB _ReadS = PAct $ \str0 -> PAlt [ (PVal val1, str1) | (val1, str1) <- _ReadS str0 ]
@@ -85,7 +83,7 @@ negPB p1 = PAct $ \str0 -> case unPB p1 str0 of
 runPB :: ParserBase chr val -> [chr] -> Either [chr] [(val, [chr])]
 runPB = go where
     findShortest :: [[chr]] -> [chr]
-    findShortest = head . sortByMerging (\x1 -> \x2 -> length x1 <= length x2)
+    findShortest = head . sortByMerging (on (<=) length)
     go :: ParserBase chr val -> [chr] -> Either [chr] [(val, [chr])]
     go (PVal val1) str0 = Right [(val1, str0)]
     go (PAlt alts1) str0

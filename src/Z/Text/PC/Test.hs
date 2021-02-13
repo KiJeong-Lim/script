@@ -1,9 +1,9 @@
-module Z.PC.Base.Test where
+module Z.Text.PC.Test where
 
 import Test.QuickCheck
 import Test.QuickCheck.Checkers
 import Test.QuickCheck.Classes
-import Z.PC.Base
+import Z.Text.PC.Base
 
 instance (CoArbitrary chr, Arbitrary chr, Arbitrary val) => Arbitrary (ParserBase chr val) where
     arbitrary = choose (1, 5) >>= loop where
@@ -28,18 +28,18 @@ instance (CoArbitrary chr, Arbitrary chr, Arbitrary val) => Arbitrary (ParserBas
 instance (Show chr, Arbitrary chr, EqProp val, EqProp chr) => EqProp (ParserBase chr val) where
     parser1 =-= parser2 = runPB parser1 =-= runPB parser2
 
-checkParserBaseisMonad :: TestBatch
-checkParserBaseisMonad = go undefined where
+checkParserBaseIsMonad :: TestBatch
+checkParserBaseIsMonad = go undefined where
     go :: ParserBase Char (Int, Int, Int) -> TestBatch
     go = monad
 
-checkParserBaseisMonadPlus :: TestBatch
-checkParserBaseisMonadPlus = go undefined where
+checkParserBaseIsMonadPlus :: TestBatch
+checkParserBaseIsMonadPlus = go undefined where
     go :: ParserBase Char (Int, Int) -> TestBatch
     go = monadPlus
 
 testParserBase :: IO ()
 testParserBase = do
-    quickBatch checkParserBaseisMonad
-    quickBatch checkParserBaseisMonadPlus
+    quickBatch checkParserBaseIsMonad
+    quickBatch checkParserBaseIsMonadPlus
     return ()

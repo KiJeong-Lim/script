@@ -15,11 +15,17 @@ library
     default-language: Haskell2010
     build-depends: base >= 4.7 && < 5, containers >= 0.6, transformers >= 0.5, QuickCheck >= 2.13, checkers >= 0.5, pretty-terminal >= 0.1.0.0
     exposed-modules:
-        Z.PC
-        Z.PM
+        Z.Algorithm.Sort
+        Z.Text.Doc
+        Z.Text.PC
+        Z.Util
     other-modules:
-        Z.PC.Base
-        Z.PC.Base.Test
+        Z.Text.Doc.Viewer
+        Z.Text.PC.Base
+        Z.Text.PC.Expansion
+        Z.Text.PC.Loc
+        Z.Text.PC.RegEx
+        Z.Text.PC.Test
 executable LGS
     hs-source-dirs: src
     default-language: Haskell2010

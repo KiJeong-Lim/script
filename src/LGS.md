@@ -1,1 +1,0 @@
-# Implementaion Notes on LGS
