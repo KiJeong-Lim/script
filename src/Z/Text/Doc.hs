@@ -17,6 +17,8 @@ instance Monoid DOC where
 
 isEmptyDoc :: Doc -> Bool
 isEmptyDoc (DE) = True
+isEmptyDoc (DT "") = True
+isEmptyDoc (DH doc1 doc2) = isEmptyDoc doc1 && isEmptyDoc doc2
 isEmptyDoc _ = False
 
 emptyDoc :: Doc

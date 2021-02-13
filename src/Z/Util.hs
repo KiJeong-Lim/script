@@ -95,9 +95,10 @@ plist space (delta : deltas) = pnl . pindent space . pstr "[ " . loop delta delt
     loop delta1 [] = delta1 . pnl . pindent space . pstr "]"
     loop delta1 (delta2 : deltas3) = delta1 . pnl . pindent space . pstr ", " . loop delta2 deltas3
 
-split' :: (a -> a -> Bool) -> [a] -> [[a]]
-split' cond (x1 : x2 : xs)
-    | cond x1 x2 = case split' cond (x2 : xs) of
+splitUnless :: (a -> a -> Bool) -> [a] -> [[a]]
+splitUnless cond (x1 : x2 : xs)
+    | cond x1 x2 = case splitUnless cond (x2 : xs) of
+        [] -> [x1]
         y : ys -> (x1 : y) : ys
-split' cond [] = []
-split' cond (x1 : xs) = [x1] : split' cond xs
+splitUnless cond [] = []
+splitUnless cond (x1 : xs) = [x1] : splitUnless cond xs
