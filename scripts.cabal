@@ -20,6 +20,7 @@ library
         Z.Text.PC
         Z.Util
     other-modules:
+        Z.Text.Doc.Internal
         Z.Text.Doc.Viewer
         Z.Text.PC.Base
         Z.Text.PC.Expansion

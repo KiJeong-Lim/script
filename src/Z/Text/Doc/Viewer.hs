@@ -37,11 +37,11 @@ mkVH v1 v2 = v1 `seq` v2 `seq` VHorizontal v1 v2
 mkVF :: Int -> Int -> [String] -> Viewer
 mkVF row1 col1 field1 = row1 `seq` col1 `seq` field1 `seq` VField row1 col1 field1
 
-render :: Viewer -> String
-render = unlines . linesFromVField . normalizeV where
+renderViewer :: Viewer -> String
+renderViewer = unlines . linesFromVField . normalizeV where
     contract :: Viewer -> Viewer
-    contract (VColor c1 v1) = contract v1
-    contract (VStyle s1 v1) = contract v1
+    contract (VColor c1 v2) = contract v2
+    contract (VStyle s1 v2) = contract v2
     contract v = v
     getMaxHeight :: [Viewer] -> Int
     getMaxHeight vs = maximum (0 : [ col | VField row col field <- map contract vs ])
@@ -50,21 +50,21 @@ render = unlines . linesFromVField . normalizeV where
     expandHeight :: Int -> Viewer -> Viewer
     expandHeight col VBeam = mkVF 1 col (replicate col "|")
     expandHeight col VEmpty = mkVF 0 col (replicate col "")
-    expandHeight col (VStyle s1 v1) = mkVS s1 (expandHeight col v1)
-    expandHeight col (VColor c1 v1) = mkVC c1 (expandHeight col v1)
+    expandHeight col (VStyle s1 v2) = mkVS s1 (expandHeight col v2)
+    expandHeight col (VColor c1 v2) = mkVC c1 (expandHeight col v2)
     expandHeight col (VField row col' field) = mkVF row col (field ++ replicate (col - col') (replicate row ' '))
     expandWidth :: Int -> Viewer -> Viewer
     expandWidth row VBeam = mkVS Bold (mkVF row 1 [replicate row '-'])
     expandWidth row VEmpty = mkVF row 0 []
-    expandWidth row (VStyle s1 v1) = mkVS s1 (expandWidth row v1)
-    expandWidth row (VColor c1 v1) = mkVC c1 (expandWidth row v1)
+    expandWidth row (VStyle s1 v2) = mkVS s1 (expandWidth row v2)
+    expandWidth row (VColor c1 v2) = mkVC c1 (expandWidth row v2)
     expandWidth row (VField row' col field) = mkVF row col [ str ++ replicate (row - row') ' ' | str <- field ]
     horizontal :: Viewer -> [Viewer]
     horizontal VBeam = return mkVB
     horizontal VEmpty = return mkVE
     horizontal (VField row col field) = return (mkVF row col field)
-    horizontal (VColor c1 v1) = map (mkVC c1) (horizontal v1)
-    horizontal (VStyle s1 v1) = map (mkVS s1) (horizontal v1)
+    horizontal (VColor c1 v2) = map (mkVC c1) (horizontal v2)
+    horizontal (VStyle s1 v2) = map (mkVS s1) (horizontal v2)
     horizontal (VText ss1) = return (mkVF (length ss1) 1 [ss1])
     horizontal (VVertical v1 v2) = return (normalizeV (mkVV v1 v2))
     horizontal (VHorizontal v1 v2) = horizontal v1 ++ horizontal v2
@@ -72,15 +72,15 @@ render = unlines . linesFromVField . normalizeV where
     vertical VBeam = return mkVB
     vertical VEmpty = return mkVE
     vertical (VField row col field) = return (mkVF row col field)
-    vertical (VColor c1 v1) = map (mkVC c1) (vertical v1)
-    vertical (VStyle s1 v1) = map (mkVS s1) (vertical v1)
+    vertical (VColor c1 v2) = map (mkVC c1) (vertical v2)
+    vertical (VStyle s1 v2) = map (mkVS s1) (vertical v2)
     vertical (VText ss1) = return (mkVF (length ss1) 1 [ss1])
     vertical (VHorizontal v1 v2) = return (normalizeH (mkVH v1 v2))
     vertical (VVertical v1 v2) = vertical v1 ++ vertical v2
     reduce :: Viewer -> Viewer
-    reduce (VColor c1 v1) = case reduce v1 of
+    reduce (VColor c1 v2) = case reduce v2 of
         VField row1 col1 field1 -> mkVF row1 col1 (map (color c1) field1)
-    reduce (VStyle s1 v1) = case reduce v1 of
+    reduce (VStyle s1 v2) = case reduce v2 of
         VField row1 col1 field1 -> mkVF row1 col1 (map (style s1) field1)
     reduce v1 = v1
     hsum :: Int -> [Viewer] -> Viewer

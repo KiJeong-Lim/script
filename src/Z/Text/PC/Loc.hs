@@ -29,7 +29,7 @@ addLoc = go 1 1 where
     go r c [] = []
     go r c (ch : str) = ((r, c), ch) : go (getNextRow r ch) (getNextCol c ch) str
 
-mkErrMsg :: Bool -> Src -> LocStr -> ErrMsg
+mkErrMsg :: Beauty -> Src -> LocStr -> ErrMsg
 mkErrMsg beauty src lstr = renderDoc beauty err_msg where
     splitBy :: Char -> String -> [String]
     splitBy ch = loop where
@@ -51,11 +51,11 @@ mkErrMsg beauty src lstr = renderDoc beauty err_msg where
         ((r, c), _) : _ -> c
     err_msg :: Doc
     err_msg = vconcat
-        [ blue (text "parsing error at " <> putDoc 0 stuck_row <> text ":" <> putDoc 0 stuck_col <> text ".")
+        [ blue (text "parsing error at " <> mkDoc 0 stuck_row <> text ":" <> mkDoc 0 stuck_col <> text ".")
         , hconcat
             [ vconcat
                 [ text ""
-                , blue (text " " <> putDoc 0 stuck_row <> text " ")
+                , blue (text " " <> mkDoc 0 stuck_row <> text " ")
                 , text ""
                 ]
             , blue mkBeam

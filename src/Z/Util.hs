@@ -45,6 +45,21 @@ instance Semigroup (PM a) where
 instance Monoid (PM a) where
     mempty = empty
 
+instance Outputable Char where
+    pprint _ ch = case ch of
+        '\n' -> pstr "\\n"
+        '\t' -> pstr "\\t"
+        '\\' -> pstr "\\\\"
+        '\"' -> pstr "\\\""
+        '\'' -> pstr "\\\'"
+        ch -> pstr [ch]
+
+pprintChar :: Char -> String -> String
+pprintChar ch = pstr "\\\'" . pprint 0 ch . pstr "\\\'"
+
+pprintString :: String -> String -> String
+pprintString str = pstr "\"" . pcat (map (pprint 0) str) . pstr "\""
+
 autoPM :: Read a => Precedence -> PM a
 autoPM = PM . readsPrec
 
