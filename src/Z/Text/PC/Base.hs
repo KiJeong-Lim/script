@@ -86,10 +86,9 @@ runPB = go where
     findShortest = head . sortByMerging (on (<=) length)
     go :: ParserBase chr val -> [chr] -> Either [chr] [(val, [chr])]
     go (PVal val1) str0 = Right [(val1, str0)]
-    go (PAlt alts1) str0
-        = case [ go p1 str1 | (p1, str1) <- alts1 ] of
-            [] -> Left str0
-            results -> case [ (val2, str2) | Right pairs <- results, (val2, str2) <- pairs ] of
-                [] -> Left (findShortest [ str2 | Left str2 <- results ])
-                pairs -> Right pairs
+    go (PAlt alts1) str0 = case [ go p1 str1 | (p1, str1) <- alts1 ] of
+        [] -> Left str0
+        results -> case [ (val2, str2) | Right pairs <- results, (val2, str2) <- pairs ] of
+            [] -> Left (findShortest [ str2 | Left str2 <- results ])
+            pairs -> Right pairs
     go (PAct act1) str0 = go (act1 str0) str0
