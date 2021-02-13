@@ -61,7 +61,8 @@ listDoc (doc1 : docs2) = vconcat ([hconcat [text "[ ", doc1]] ++ [ hconcat [text
 
 puncDoc :: Doc -> [Doc] -> [Doc]
 puncDoc doc [] = []
-puncDoc doc (doc1 : docs2) = doc1 : concat [ [doc, doc2] | doc2 <- docs2 ]
+puncDoc doc [doc1] = [doc1]
+puncDoc doc (doc1 : docs2) = mkDH doc1 doc : puncDoc doc docs2
 
 renderDoc :: Beauty -> Doc -> String
 renderDoc beauty
