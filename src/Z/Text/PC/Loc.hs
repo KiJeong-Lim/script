@@ -29,8 +29,8 @@ addLoc = go 1 1 where
     go r c [] = []
     go r c (ch : str) = ((r, c), ch) : go (getNextRow r ch) (getNextCol c ch) str
 
-mkErrMsg :: Src -> LocStr -> ErrMsg
-mkErrMsg src lstr = renderDoc True err_msg where
+mkErrMsg :: Bool -> Src -> LocStr -> ErrMsg
+mkErrMsg beauty src lstr = renderDoc beauty err_msg where
     splitBy :: Char -> String -> [String]
     splitBy ch = loop where
         loop :: String -> [String]

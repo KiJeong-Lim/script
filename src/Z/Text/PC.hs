@@ -3,6 +3,8 @@ module Z.Text.PC where
 import Control.Applicative
 import Control.Monad
 import Data.Function
+import System.Console.Pretty
+import System.Exit
 import Test.QuickCheck
 import Test.QuickCheck.Checkers
 import Z.Algorithm.Sort
@@ -80,9 +82,15 @@ regexPC = PC . parserOfRegularExpression
 negPC :: PC a -> PC ()
 negPC = PC . negPB . unPC
 
-runPC :: PC val -> Src -> Either ErrMsg val
+runPC :: PC val -> Src -> IO val
 runPC p str0 = case runPB (unPC p) (addLoc str0) of
-    Left lstr -> Left (mkErrMsg str0 lstr)
+    Left lstr -> do
+        beauty <- supportsPretty
+        putStrLn (mkErrMsg beauty str0 lstr)
+        exitSuccess
     Right pairs -> case [ val | (val, lstr1) <- pairs, null lstr1 ] of
-        [] -> Left (mkErrMsg str0 (head (sortByMerging (on (<=) length) (map snd pairs))))
-        val : _ -> Right val
+        [] -> do
+            beauty <- supportsPretty
+            putStrLn (mkErrMsg beauty str0 (head (sortByMerging (on (<=) length) (map snd pairs))))
+            exitSuccess
+        val : _ -> return val
