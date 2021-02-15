@@ -102,3 +102,10 @@ splitUnless cond (x1 : x2 : xs)
         y : ys -> (x1 : y) : ys
 splitUnless cond [] = []
 splitUnless cond (x1 : xs) = [x1] : splitUnless cond xs
+
+splitBy :: Eq a => a -> [a] -> [[a]]
+splitBy x0 [] = [[]]
+splitBy x0 (x : xs)
+    | x == x0 = [] : splitBy x0 xs
+    | otherwise = case splitBy x0 xs of
+        y : ys -> (x : y) : ys

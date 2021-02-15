@@ -83,7 +83,11 @@ negPC :: PC a -> PC ()
 negPC = PC . negPB . unPC
 
 runPC :: PC val -> Src -> Either String val
-runPC p str0 = either (Left . mkErrMsg False str0) (\pairs -> let vals = [ val | (val, lstr1) <- pairs, null lstr1 ] in if null vals then Left (mkErrMsg False str0 (head (sortByMerging (on (<=) length) (map snd pairs)))) else Right (head vals)) (runPB (unPC p) (addLoc str0))
+runPC p str0 = case runPB (unPC p) (addLoc str0) of
+    Left lstr -> Left (mkErrMsg False str0 lstr)
+    Right pairs -> case [ val | (val, lstr1) <- pairs, null lstr1 ] of
+        [] -> Left (mkErrMsg False str0 (head (sortByMerging (on (<=) length) (map snd pairs))))
+        val : _ -> Right val
 
 runPCIO :: PC val -> Src -> IO val
 runPCIO p str0 = case runPB (unPC p) (addLoc str0) of

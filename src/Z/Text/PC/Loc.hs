@@ -1,6 +1,7 @@
 module Z.Text.PC.Loc where
 
 import Z.Text.Doc
+import Z.Util
 
 type Row = Int
 
@@ -31,14 +32,6 @@ addLoc = go 1 1 where
 
 mkErrMsg :: Beauty -> Src -> LocStr -> ErrMsg
 mkErrMsg beauty src lstr = renderDoc beauty err_msg where
-    splitBy :: Char -> String -> [String]
-    splitBy ch = loop where
-        loop :: String -> [String]
-        loop [] = [""]
-        loop (ch1 : str1)
-            | ch == ch1 = "" : loop str1
-            | otherwise = case loop str1 of
-                str : strs -> (ch1 : str) : strs
     stuck_row :: Row
     stuck_row = case lstr of
         [] -> length (filter (\lch -> snd lch == '\n') lstr) + 1

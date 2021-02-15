@@ -13,7 +13,7 @@ instance Semigroup DOC where
     doc1 <> doc2 = mkDH doc1 doc2
 
 instance Monoid DOC where
-    mempty = emptyDoc
+    mempty = mkDE
 
 isEmptyDoc :: Doc -> Bool
 isEmptyDoc (DE) = True
@@ -71,8 +71,8 @@ renderDoc beauty = renderViewer beauty . toViewer . reduceDoc where
     reduceDoc :: Doc -> Doc
     reduceDoc (DE) = mkDE
     reduceDoc (DT str1) = mkDT str1
-    reduceDoc (DS style1 doc2) = if beauty then mkDS style1 (reduceDoc doc2) else reduceDoc doc2
-    reduceDoc (DC color1 doc2) = if beauty then mkDC color1 (reduceDoc doc2) else reduceDoc doc2
+    reduceDoc (DS sty1 doc2) = if beauty then mkDS sty1 (reduceDoc doc2) else reduceDoc doc2
+    reduceDoc (DC clr1 doc2) = if beauty then mkDC clr1 (reduceDoc doc2) else reduceDoc doc2
     reduceDoc (DB) = mkDB
     reduceDoc (DV doc1 doc2) = mkDV (reduceDoc doc1) (reduceDoc doc2)
     reduceDoc (DH doc1 doc2) = case (reduceDoc doc1, reduceDoc doc2) of
