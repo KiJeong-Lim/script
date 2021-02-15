@@ -67,15 +67,12 @@ puncDoc doc [doc1] = [doc1]
 puncDoc doc (doc1 : docs2) = mkDH doc1 doc : puncDoc doc docs2
 
 renderDoc :: Beauty -> Doc -> String
-renderDoc beauty
-    | beauty = renderViewer . toViewer . reduceDoc
-    | otherwise = renderViewer . toViewer . reduceDoc . remove
-    where
-        remove :: Doc -> Doc
-        remove (DE) = mkDE
-        remove (DT str1) = mkDT str1
-        remove (DS style1 doc1) = remove doc1
-        remove (DC color1 doc1) = remove doc1
-        remove (DB) = mkDB
-        remove (DV doc1 doc2) = mkDV (remove doc1) (remove doc2)
-        remove (DH doc1 doc2) = mkDH (remove doc1) (remove doc2)
+renderDoc beauty = renderViewer beauty . toViewer . reduceDoc . (if beauty then id else remove) where
+    remove :: Doc -> Doc
+    remove (DE) = mkDE
+    remove (DT str1) = mkDT str1
+    remove (DS style1 doc1) = remove doc1
+    remove (DC color1 doc1) = remove doc1
+    remove (DB) = mkDB
+    remove (DV doc1 doc2) = mkDV (remove doc1) (remove doc2)
+    remove (DH doc1 doc2) = mkDH (remove doc1) (remove doc2)

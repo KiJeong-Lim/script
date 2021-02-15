@@ -98,7 +98,7 @@ plist space (delta : deltas) = pnl . pindent space . pstr "[ " . loop delta delt
 splitUnless :: (a -> a -> Bool) -> [a] -> [[a]]
 splitUnless cond (x1 : x2 : xs)
     | cond x1 x2 = case splitUnless cond (x2 : xs) of
-        [] -> [x1]
+        [] -> [[x1]]
         y : ys -> (x1 : y) : ys
 splitUnless cond [] = []
 splitUnless cond (x1 : xs) = [x1] : splitUnless cond xs
