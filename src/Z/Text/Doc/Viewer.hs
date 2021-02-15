@@ -42,14 +42,14 @@ one a = a `seq` [a]
 
 renderViewer :: Bool -> Viewer -> String
 renderViewer beauty = unlines . linesFromVField . normalizeV where
-    contract :: Viewer -> Viewer
-    contract (VColor c1 v2) = contract v2
-    contract (VStyle s1 v2) = contract v2
-    contract v = v
+    elimPretty :: Viewer -> Viewer
+    elimPretty (VColor c1 v2) = elimPretty v2
+    elimPretty (VStyle s1 v2) = elimPretty v2
+    elimPretty v = v
     getMaxHeight :: [Viewer] -> Int
-    getMaxHeight vs = foldr max 0 [ col | VField row col field <- map contract vs ]
+    getMaxHeight vs = foldr max 0 [ col | VField row col field <- map elimPretty vs ]
     getMaxWidth :: [Viewer] -> Int
-    getMaxWidth vs = foldr max 0 [ row | VField row col field <- map contract vs ]
+    getMaxWidth vs = foldr max 0 [ row | VField row col field <- map elimPretty vs ]
     expandHeight :: Int -> Viewer -> Viewer
     expandHeight col (VBeam) = mkVF 1 col (replicate col "|")
     expandHeight col (VEmpty) = mkVF 0 col (replicate col "")
@@ -80,21 +80,19 @@ renderViewer beauty = unlines . linesFromVField . normalizeV where
     vertical (VText ss1) = one (mkVF (length ss1) 1 [ss1])
     vertical (VHorizontal v1 v2) = one (normalizeH (mkVH v1 v2))
     vertical (VVertical v1 v2) = vertical v1 ++ vertical v2
-    reduce :: Viewer -> Viewer
-    reduce (VColor c1 v2) = case reduce v2 of
+    makePretty :: Viewer -> Viewer
+    makePretty (VColor c1 v2) = case makePretty v2 of
         VField row2 col2 field2 -> mkVF row2 col2 (map (color c1) field2)
-        v2' -> v2'
-    reduce (VStyle s1 v2) = case reduce v2 of
+    makePretty (VStyle s1 v2) = case makePretty v2 of
         VField row2 col2 field2 -> mkVF row2 col2 (map (style s1) field2)
-        v2' -> v2'
-    reduce v = v
+    makePretty (VField row1 col1 field1) = mkVF row1 col1 field1
     hsum :: Int -> [Viewer] -> Viewer
     hsum col [] = mkVF 0 col (replicate col "")
-    hsum col (v : vs) = case (reduce v, hsum col vs) of
+    hsum col (v : vs) = case (makePretty v, hsum col vs) of
         (VField row1 _ field1, VField row2 _ field2) -> mkVF (row1 + row2) col (zipWith (++) field1 field2)
     vsum :: Int -> [Viewer] -> Viewer
     vsum row [] = mkVF row 0 []
-    vsum row (v : vs) = case (reduce v, vsum row vs) of
+    vsum row (v : vs) = case (makePretty v, vsum row vs) of
         (VField _ col1 field1, VField _ col2 field2) -> mkVF row (col1 + col2) (field1 ++ field2)
     normalizeH :: Viewer -> Viewer
     normalizeH = merge . concat . map horizontal . flatten where
@@ -111,4 +109,4 @@ renderViewer beauty = unlines . linesFromVField . normalizeV where
         merge :: [Viewer] -> Viewer
         merge vs = vsum (getMaxWidth vs) (map (expandWidth (getMaxWidth vs)) vs)
     linesFromVField :: Viewer -> [String]
-    linesFromVField (VField row col field) = field
+    linesFromVField (VField row1 col1 field1) = field1

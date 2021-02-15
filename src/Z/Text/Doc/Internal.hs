@@ -80,24 +80,11 @@ mkDV doc1 doc2 = doc1 `seq` doc2 `seq` DV doc1 doc2
 mkDH :: DOC -> DOC -> DOC
 mkDH doc1 doc2 = doc1 `seq` doc2 `seq` DH doc1 doc2
 
-reduceDoc :: DOC -> DOC
-reduceDoc (DE) = mkDE
-reduceDoc (DT str1) = mkDT str1
-reduceDoc (DS style1 doc1) = mkDS style1 (reduceDoc doc1)
-reduceDoc (DC color1 doc1) = mkDC color1 (reduceDoc doc1)
-reduceDoc (DB) = mkDB
-reduceDoc (DV doc1 doc2) = mkDV (reduceDoc doc1) (reduceDoc doc2)
-reduceDoc (DH doc1 doc2) = case (reduceDoc doc1, reduceDoc doc2) of
-    (DE, doc2') -> doc2'
-    (doc1', DE) -> doc1'
-    (DT str1, DT str2) -> mkDT (str1 ++ str2)
-    (doc1', doc2') -> mkDH doc1' doc2'
-
 toViewer :: DOC -> Viewer
 toViewer (DE) = mkVE
 toViewer (DT str1) = mkVT str1
-toViewer (DS style1 doc1) = mkVS style1 (toViewer doc1)
-toViewer (DC color1 doc1) = mkVC color1 (toViewer doc1)
+toViewer (DS style1 doc2) = mkVS style1 (toViewer doc2)
+toViewer (DC color1 doc2) = mkVC color1 (toViewer doc2)
 toViewer (DB) = mkVB
 toViewer (DV doc1 doc2) = mkVV (toViewer doc1) (toViewer doc2)
 toViewer (DH doc1 doc2) = mkVH (toViewer doc1) (toViewer doc2)
