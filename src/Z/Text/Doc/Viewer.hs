@@ -17,7 +17,7 @@ mkVE :: Viewer
 mkVE = VEmpty
 
 mkVT :: String -> Viewer
-mkVT ss1 = ss1 `seq` VText ss1
+mkVT str1 = str1 `seq` VText str1
 
 mkVS :: Style -> Viewer -> Viewer
 mkVS s1 v2 = v2 `seq` VStyle s1 v2
@@ -57,7 +57,7 @@ renderViewer beauty = unlines . linesFromVField . normalizeV where
     expandHeight col (VColor c1 v2) = mkVC c1 (expandHeight col v2)
     expandHeight col (VField row col' field) = mkVF row col (field ++ replicate (col - col') (replicate row ' '))
     expandWidth :: Int -> Viewer -> Viewer
-    expandWidth row (VBeam) = if beauty then mkVS Bold (mkVF row 1 [replicate row '-']) else mkVF row 1 [replicate row '-']
+    expandWidth row (VBeam) = mkVS Bold (mkVF row 1 [replicate row '-'])
     expandWidth row (VEmpty) = mkVF row 0 []
     expandWidth row (VStyle s1 v2) = mkVS s1 (expandWidth row v2)
     expandWidth row (VColor c1 v2) = mkVC c1 (expandWidth row v2)
@@ -68,7 +68,7 @@ renderViewer beauty = unlines . linesFromVField . normalizeV where
     horizontal (VField row col field) = one (mkVF row col field)
     horizontal (VColor c1 v2) = map (mkVC c1) (horizontal v2)
     horizontal (VStyle s1 v2) = map (mkVS s1) (horizontal v2)
-    horizontal (VText ss1) = one (mkVF (length ss1) 1 [ss1])
+    horizontal (VText str1) = one (mkVF (length str1) 1 [str1])
     horizontal (VVertical v1 v2) = one (normalizeV (mkVV v1 v2))
     horizontal (VHorizontal v1 v2) = horizontal v1 ++ horizontal v2
     vertical :: Viewer -> [Viewer]
@@ -77,14 +77,14 @@ renderViewer beauty = unlines . linesFromVField . normalizeV where
     vertical (VField row col field) = one (mkVF row col field)
     vertical (VColor c1 v2) = map (mkVC c1) (vertical v2)
     vertical (VStyle s1 v2) = map (mkVS s1) (vertical v2)
-    vertical (VText ss1) = one (mkVF (length ss1) 1 [ss1])
+    vertical (VText str1) = one (mkVF (length str1) 1 [str1])
     vertical (VHorizontal v1 v2) = one (normalizeH (mkVH v1 v2))
     vertical (VVertical v1 v2) = vertical v1 ++ vertical v2
     makePretty :: Viewer -> Viewer
     makePretty (VColor c1 v2) = case makePretty v2 of
-        VField row2 col2 field2 -> mkVF row2 col2 (map (color c1) field2)
+        VField row2 col2 field2 -> if beauty then mkVF row2 col2 (map (color c1) field2) else mkVF row2 col2 field2
     makePretty (VStyle s1 v2) = case makePretty v2 of
-        VField row2 col2 field2 -> mkVF row2 col2 (map (style s1) field2)
+        VField row2 col2 field2 -> if beauty then mkVF row2 col2 (map (style s1) field2) else mkVF row2 col2 field2
     makePretty (VField row1 col1 field1) = mkVF row1 col1 field1
     hsum :: Int -> [Viewer] -> Viewer
     hsum col [] = mkVF 0 col (replicate col "")
