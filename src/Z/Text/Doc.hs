@@ -9,20 +9,14 @@ type Doc = DOC
 
 type Beauty = Bool
 
-instance Semigroup DOC where
-    doc1 <> doc2 = mkDH doc1 doc2
-
-instance Monoid DOC where
-    mempty = mkDE
-
 isEmptyDoc :: Doc -> Bool
 isEmptyDoc (DE) = True
 isEmptyDoc (DT "") = True
 isEmptyDoc (DH doc1 doc2) = isEmptyDoc doc1 && isEmptyDoc doc2
 isEmptyDoc _ = False
 
-emptyDoc :: Doc
-emptyDoc = mkDE
+mkEmptyDoc :: Doc
+mkEmptyDoc = mkDE
 
 mkDoc :: Show a => Precedence -> a -> Doc
 mkDoc prec = mkDT . flip (showsPrec prec) ""
@@ -37,10 +31,10 @@ textit :: String -> Doc
 textit = mkDS Italic . mkDT
 
 hconcat :: [Doc] -> Doc
-hconcat = foldr mkDH emptyDoc
+hconcat = foldr mkDH mkDE
 
 vconcat :: [Doc] -> Doc
-vconcat = foldr mkDV emptyDoc
+vconcat = foldr mkDV mkDE
 
 mkBeam :: Doc
 mkBeam = mkDB

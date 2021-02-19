@@ -58,6 +58,12 @@ instance Show DOC where
     showsPrec 10 (DB) = pstr "DB"
     showsPrec _ doc1 = pstr "(" . showsPrec 0 doc1 . pstr ")"
 
+instance Semigroup DOC where
+    doc1 <> doc2 = mkDH doc1 doc2
+
+instance Monoid DOC where
+    mempty = mkDE
+
 mkDE :: DOC
 mkDE = DE
 
