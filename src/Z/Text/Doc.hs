@@ -40,7 +40,7 @@ hconcat :: [Doc] -> Doc
 hconcat = foldr mkDH emptyDoc
 
 vconcat :: [Doc] -> Doc
-vconcat = foldr mkDH emptyDoc
+vconcat = foldr mkDV emptyDoc
 
 mkBeam :: Doc
 mkBeam = mkDB

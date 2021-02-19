@@ -50,7 +50,7 @@ instance Read RegEx where
             , consumeStr "+" *> pure (\re -> ReMult re (ReStar re))
             , consumeStr "?" *> pure (\re -> RePlus re (ReWord ""))
             ]
-        go :: Int -> PM RegEx
+        go :: Precedence -> PM RegEx
         go 0 = List.foldl' RePlus <$> go 1 <*> many (consumeStr " + " *> go 1)
         go 1 = List.foldl' ReMult <$> go 2 <*> many (consumeStr " " *> go 2)
         go 2 = List.foldl' (flip ($)) <$> go 3 <*> many suffix
@@ -94,6 +94,6 @@ parserOfRegularExpression regex_rep = go maybeRegEx where
         = ("", lstr0) : [ (str1 ++ str2, lstr2) | (str1, lstr1) <- runRegEx regex1 lstr0, (str2, lstr2) <- runRegEx (ReStar regex1) lstr1 ]
     go :: Maybe RegEx -> ParserBase LocChr String
     go Nothing = error ("wrong regex: " ++ show regex_rep)
-    go (Just regex) = PAct $ \lstr0 -> case sortByMerging (on (>) (length . fst)) (runRegEx regex lstr0) of
+    go (Just regex) = PAct $ \lstr0 -> case sortByMerging (on (>=) (length . fst)) (runRegEx regex lstr0) of
         [] -> PAlt []
         (str1, lstr1) : _ -> PAlt [(PVal str1, lstr1)]
