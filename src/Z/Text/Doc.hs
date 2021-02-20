@@ -9,6 +9,12 @@ type Doc = DOC
 
 type Beauty = Bool
 
+class PrintDoc a where
+    mkDoc :: Precedence -> a -> Doc
+
+instance PrintDoc Int where
+    mkDoc prec = mkDT . flip (showsPrec prec) ""
+
 isEmptyDoc :: Doc -> Bool
 isEmptyDoc (DE) = True
 isEmptyDoc _ = False
@@ -21,8 +27,8 @@ isNullDoc _ = False
 mkEmptyDoc :: Doc
 mkEmptyDoc = mkDE
 
-mkDoc :: Show a => Precedence -> a -> Doc
-mkDoc prec = mkDT . flip (showsPrec prec) ""
+autoDoc :: Show a => Precedence -> a -> Doc
+autoDoc prec = mkDT . flip (showsPrec prec) ""
 
 text :: String -> Doc
 text = mkDT
@@ -78,7 +84,7 @@ renderDoc beauty = renderViewer beauty . toViewer . reduceDoc where
         (DT str1, DT str2) -> mkDT (str1 ++ str2)
         (doc1', doc2') -> mkDH doc1' doc2'
 
-printDoc :: Beauty -> Doc -> IO ()
-printDoc beauty1 doc = do
+printDoc :: PrintDoc val => Beauty -> val -> IO ()
+printDoc beauty1 val = do
     beauty2 <- supportsPretty
-    putStrLn (renderDoc (beauty1 && beauty2) doc)
+    putStrLn (renderDoc (beauty1 && beauty2) (mkDoc 0 val))
