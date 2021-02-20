@@ -18,12 +18,12 @@ library
         Z.Algorithm.Sort
         Z.Text.Doc
         Z.Text.PC
+        Z.Text.PC.Expansion
         Z.Util
     other-modules:
         Z.Text.Doc.Internal
         Z.Text.Doc.Viewer
         Z.Text.PC.Base
-        Z.Text.PC.Expansion
         Z.Text.PC.Loc
         Z.Text.PC.RegEx
         Z.Text.PC.Test

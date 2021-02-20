@@ -63,4 +63,4 @@ largeid :: PC String
 largeid = regexPC "[\'A\'-\'Z\'] [\'a\'-\'z\' \'0\'-\'9\' \'A\'-\'Z\']*"
 
 puncPC :: String -> PC a -> PC [a]
-puncPC str p = pure [] <|> (pure (:) <*> p <*> many (consumePC str *> p))
+puncPC str p = (pure (:) <*> p <*> many (consumePC str *> p)) <|> pure []
