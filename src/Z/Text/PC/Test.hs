@@ -57,7 +57,7 @@ testParserBase = do
     return ()
 
 listPC :: PC a -> PC [a]
-listPC p = consumePC "[" *> (pure [] <|> ((:) <$> p <*> many (consumePC ", " *> p))) <* consumePC "]"
+listPC p = consumePC "[" *> puncPC ", " p <* consumePC "]"
 
 testPC :: Int -> IO ()
 testPC 1 = do

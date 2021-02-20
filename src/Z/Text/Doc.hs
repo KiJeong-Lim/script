@@ -11,9 +11,12 @@ type Beauty = Bool
 
 isEmptyDoc :: Doc -> Bool
 isEmptyDoc (DE) = True
-isEmptyDoc (DT str1) = null str1
-isEmptyDoc (DH doc1 doc2) = isEmptyDoc doc1 && isEmptyDoc doc2
 isEmptyDoc _ = False
+
+isNullDoc :: Doc -> Bool
+isNullDoc (DT str1) = null str1
+isNullDoc (DH doc1 doc2) = isNullDoc doc1 && isNullDoc doc2
+isNullDoc _ = False
 
 mkEmptyDoc :: Doc
 mkEmptyDoc = mkDE
