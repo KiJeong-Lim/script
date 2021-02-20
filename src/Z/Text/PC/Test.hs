@@ -66,4 +66,7 @@ testPC 1 = do
 testPC 2 = do
     strs <- runPCIO (listPC acceptQuote) "[\"a\", \"b\"?"
     print strs
+testPC 3 = do
+    strs <- runPCIO (listPC acceptQuote) "[\"a\", \"b\""
+    print strs
 testPC _ = return ()
