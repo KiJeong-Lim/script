@@ -11,7 +11,7 @@ type Beauty = Bool
 
 isEmptyDoc :: Doc -> Bool
 isEmptyDoc (DE) = True
-isEmptyDoc (DT "") = True
+isEmptyDoc (DT str1) = null str1
 isEmptyDoc (DH doc1 doc2) = isEmptyDoc doc1 && isEmptyDoc doc2
 isEmptyDoc _ = False
 
@@ -74,3 +74,8 @@ renderDoc beauty = renderViewer beauty . toViewer . reduceDoc where
         (doc1', DE) -> doc1'
         (DT str1, DT str2) -> mkDT (str1 ++ str2)
         (doc1', doc2') -> mkDH doc1' doc2'
+
+printDoc :: Beauty -> Doc -> IO ()
+printDoc beauty1 doc = do
+    beauty2 <- supportsPretty
+    putStrLn (renderDoc (beauty1 && beauty2) doc)

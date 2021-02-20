@@ -68,8 +68,7 @@ mkDE :: DOC
 mkDE = DE
 
 mkDT :: String -> DOC
-mkDT "" = DE
-mkDT str1 = DT str1
+mkDT = DT
 
 mkDS :: Style -> DOC -> DOC
 mkDS sty1 doc2 = doc2 `seq` DS sty1 doc2

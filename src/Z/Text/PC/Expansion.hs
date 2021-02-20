@@ -7,7 +7,6 @@ import Z.Text.PC
 import Z.Text.PC.Base
 import Z.Text.PC.Loc
 import Z.Text.PC.RegEx
-import Z.Text.PC.Test
 
 acceptQuote :: PC String
 acceptQuote = PC go where

@@ -11,7 +11,6 @@ import Z.Algorithm.Sort
 import Z.Text.PC.Base
 import Z.Text.PC.Loc
 import Z.Text.PC.RegEx
-import Z.Text.PC.Test
 
 type NameOfPC = String
 
@@ -40,15 +39,6 @@ instance Semigroup (PC val) where
 
 instance Monoid (PC val) where
     mempty = PC mempty
-
-instance EqProp val => EqProp (PC val) where
-    p1 =-= p2 = unPC p1 =-= unPC p2
-
-instance Arbitrary val => Arbitrary (PC val) where
-    arbitrary = fmap PC arbitrary
-
-instance Show val => Show (PC val) where
-    showsPrec prec = showsPrec prec . unPC
 
 autoPC :: Read val => NameOfPC -> PC val
 autoPC expecteds = PC go where

@@ -1,9 +1,12 @@
 module Z.Text.PC.Test where
 
+import Control.Applicative
 import Test.QuickCheck
 import Test.QuickCheck.Checkers
 import Test.QuickCheck.Classes
+import Z.Text.PC
 import Z.Text.PC.Base
+import Z.Text.PC.Expansion
 
 instance (CoArbitrary chr, Arbitrary chr, Arbitrary val) => Arbitrary (ParserBase chr val) where
     arbitrary = choose (1, 5) >>= loop where
@@ -28,6 +31,15 @@ instance (CoArbitrary chr, Arbitrary chr, Arbitrary val) => Arbitrary (ParserBas
 instance (Show chr, Arbitrary chr, EqProp val, EqProp chr) => EqProp (ParserBase chr val) where
     parser1 =-= parser2 = runPB parser1 =-= runPB parser2
 
+instance EqProp val => EqProp (PC val) where
+    p1 =-= p2 = unPC p1 =-= unPC p2
+
+instance Arbitrary val => Arbitrary (PC val) where
+    arbitrary = fmap PC arbitrary
+
+instance Show val => Show (PC val) where
+    showsPrec prec = showsPrec prec . unPC
+
 checkParserBaseIsMonad :: TestBatch
 checkParserBaseIsMonad = go undefined where
     go :: ParserBase Char (Int, Int, Int) -> TestBatch
@@ -43,3 +55,15 @@ testParserBase = do
     quickBatch checkParserBaseIsMonad
     quickBatch checkParserBaseIsMonadPlus
     return ()
+
+listPC :: PC a -> PC [a]
+listPC p = consumePC "[" *> (pure [] <|> ((:) <$> p <*> many (consumePC ", " *> p))) <* consumePC "]"
+
+testPC :: Int -> IO ()
+testPC 1 = do
+    strs <- runPCIO (listPC acceptQuote) "[\"a\", \"b\"]"
+    print strs
+testPC 2 = do
+    strs <- runPCIO (listPC acceptQuote) "[\"a\", \"b\"?"
+    print strs
+testPC _ = return ()
