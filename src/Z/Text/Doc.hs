@@ -27,8 +27,8 @@ isNullDoc _ = False
 mkEmptyDoc :: Doc
 mkEmptyDoc = mkDE
 
-autoDoc :: Show a => Precedence -> a -> Doc
-autoDoc prec = mkDT . flip (showsPrec prec) ""
+autoDoc :: Show a => a -> Doc
+autoDoc = mkDT . show
 
 text :: String -> Doc
 text = mkDT
