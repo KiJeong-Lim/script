@@ -86,7 +86,7 @@ parserOfRegularExpression regex_rep = go maybeRegEx where
         | otherwise = []
     runRegEx (RePlus regex1 regex2) lstr0
         = runRegEx regex1 lstr0 ++ runRegEx regex2 lstr0
-    runRegEx ReZero lstr0   
+    runRegEx ReZero lstr0
         = []
     runRegEx (ReMult regex1 regex2) lstr0
         = [ (str1 ++ str2, lstr2) | (str1, lstr1) <- runRegEx regex1 lstr0, (str2, lstr2) <- runRegEx regex2 lstr1 ]

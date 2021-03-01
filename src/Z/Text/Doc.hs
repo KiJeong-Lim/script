@@ -13,7 +13,7 @@ class PrintDoc a where
     mkDoc :: Precedence -> a -> Doc
 
 instance PrintDoc Int where
-    mkDoc prec = mkDT . flip (showsPrec prec) ""
+    mkDoc prec = text . flip (showsPrec prec) ""
 
 isEmptyDoc :: Doc -> Bool
 isEmptyDoc (DE) = True
@@ -28,16 +28,16 @@ mkEmptyDoc :: Doc
 mkEmptyDoc = mkDE
 
 autoDoc :: Show a => a -> Doc
-autoDoc = mkDT . show
+autoDoc = text . show
 
 text :: String -> Doc
-text = mkDT
+text = vconcat . map mkDT . splitBy '\n'
 
 textbf :: String -> Doc
-textbf = mkDS Bold . mkDT
+textbf = mkDS Bold . text
 
 textit :: String -> Doc
-textit = mkDS Italic . mkDT
+textit = mkDS Italic . text
 
 hconcat :: [Doc] -> Doc
 hconcat = foldr mkDH mkDE
@@ -55,7 +55,7 @@ red :: Doc -> Doc
 red = mkDC Red
 
 white :: Int -> Doc
-white n = mkDT (replicate n ' ')
+white n = text (replicate n ' ')
 
 indentDoc :: Indentation -> [Doc] -> Doc
 indentDoc n docs = vconcat (map (mkDH (white n)) docs)

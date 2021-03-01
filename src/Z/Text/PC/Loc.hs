@@ -44,10 +44,7 @@ mkErrMsg beauty src lstr = renderDoc beauty err_msg where
         ((r, c), _) : _ -> c
     err_msg :: Doc
     err_msg = vconcat
-        [ if null lstr
-            then blue (text "parsing error at EOF.")
-            else blue (text "parsing error at " <> mkDoc 0 stuck_row <> text ":" <> mkDoc 0 stuck_col <> text ".")
-        , hconcat
+        [ hconcat
             [ vconcat
                 [ text ""
                 , blue (text " " <> mkDoc 0 stuck_row <> text " ")
@@ -60,4 +57,8 @@ mkErrMsg beauty src lstr = renderDoc beauty err_msg where
                 , white stuck_col <> red (text "^")
                 ]
             ]
+        , text ""
+        , if null lstr
+            then blue (text "?- parsing error at EOF.")
+            else blue (text "?- parsing error at " <> mkDoc 0 stuck_row <> text ":" <> mkDoc 0 stuck_col <> text ".")
         ]
