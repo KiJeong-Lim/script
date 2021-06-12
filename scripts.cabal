@@ -22,4 +22,6 @@ executable scripts
     main-is: Main.hs
     other-modules:
         Z.Algo.Sorting
+        Z.Text.PC
+        Z.Text.Ppr
         Z.Util

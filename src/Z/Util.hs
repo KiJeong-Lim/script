@@ -5,8 +5,8 @@ import Control.Monad
 
 type Precedence = Int
 
-newtype PM a = PM
-    { unPM :: ReadS a }
+newtype PM a
+    = PM { unPM :: ReadS a }
     deriving ()
 
 instance Functor PM where
